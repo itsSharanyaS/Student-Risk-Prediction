@@ -274,6 +274,7 @@ page = st.sidebar.radio(
         "Explainable AI",
         "Risk Forecasting",
         "What-If Simulator",
+        "Student Risk Trend Analyzer",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -885,7 +886,22 @@ elif page == "What-If Simulator":
 
 
 # =========================================================
-# 14. RISK ANALYTICS
+# 14. STUDENT RISK TREND ANALYZER (FEATURE 3.7)
+# =========================================================
+
+elif page == "Student Risk Trend Analyzer":
+
+    from student_risk_trend import render_student_risk_trend
+
+    render_student_risk_trend(
+        students,
+        apply_chart_theme,
+        risk_colors
+    )
+
+
+# =========================================================
+# 15. RISK ANALYTICS
 # =========================================================
 
 elif page == "Risk Analytics":
@@ -941,7 +957,7 @@ elif page == "Risk Analytics":
 
 
 # =========================================================
-# 15. EARLY WARNING CENTER
+# 16. EARLY WARNING CENTER
 # =========================================================
 
 elif page == "Early Warning Center":
@@ -992,7 +1008,7 @@ elif page == "Early Warning Center":
 
 
 # =========================================================
-# 16. RECOVERY PLANS
+# 17. RECOVERY PLANS
 # =========================================================
 
 elif page == "Recovery Plans":
@@ -1063,7 +1079,7 @@ elif page == "Recovery Plans":
 
 
 # =========================================================
-# 17. ABOUT PROJECT
+# 18. ABOUT PROJECT
 # =========================================================
 
 elif page == "About Project":
@@ -1087,6 +1103,7 @@ elif page == "About Project":
     - Explainable AI risk analysis
     - Risk forecasting simulation
     - Academic What-If Simulator
+    - Student Risk Trend Analyzer
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -1122,6 +1139,7 @@ elif page == "About Project":
     - Explainable AI
     - Risk forecasting
     - Academic What-If Simulator
+    - Student Risk Trend Analyzer
     - Student clustering
     - Intervention effectiveness analysis
     - Database integration
@@ -1140,7 +1158,7 @@ elif page == "About Project":
 
 
 # =========================================================
-# 18. FOOTER
+# 19. FOOTER
 # =========================================================
 
 st.sidebar.divider()

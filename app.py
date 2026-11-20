@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -127,7 +128,8 @@ def refresh_student_data(df):
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = df.dropna(subset=[
-        "Student ID", "Student", "Attendance", "Marks", "Assignments", "Semester"
+        "Student ID", "Student", "Attendance",
+        "Marks", "Assignments", "Semester"
     ])
 
     for col in ["Attendance", "Marks", "Assignments"]:
@@ -198,7 +200,6 @@ def save_student_data(df):
 
     st.session_state.student_data = df.copy()
 
-    # Remove calculated columns before saving
     save_df = df.drop(columns=["Risk", "Risk Score"], errors="ignore")
 
     save_df = save_df.rename(columns={
@@ -300,6 +301,7 @@ def apply_chart_theme(fig, height=400):
     )
     return fig
 
+
 # =========================================================
 # 8. SMART DASHBOARD
 # =========================================================
@@ -311,9 +313,9 @@ if page == "Dashboard":
     st.divider()
 
     st.subheader("📌 Academic Overview")
-    col1, col2, col3, col4 = st.columns(4
 
-    )
+    col1, col2, col3, col4 = st.columns(4)
+
     col1.metric("Total Students", total_students)
     col2.metric("Students at Risk", at_risk_count, f"{risk_percentage:.1f}% of students")
     col3.metric("Average Attendance", f"{average_attendance:.1f}%")
@@ -321,6 +323,7 @@ if page == "Dashboard":
 
     st.divider()
     st.subheader("📚 Academic Performance Indicators")
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -350,8 +353,11 @@ if page == "Dashboard":
 
     with col1:
         fig = px.pie(
-            risk_data, names="Risk Level", values="Students",
-            hole=0.55, color="Risk Level",
+            risk_data,
+            names="Risk Level",
+            values="Students",
+            hole=0.55,
+            color="Risk Level",
             color_discrete_map=risk_colors
         )
         fig.update_traces(textinfo="percent+label")
@@ -360,16 +366,20 @@ if page == "Dashboard":
 
     with col2:
         fig = px.bar(
-            risk_data, x="Risk Level", y="Students",
-            color="Risk Level", text="Students",
+            risk_data,
+            x="Risk Level",
+            y="Students",
+            color="Risk Level",
+            text="Students",
             color_discrete_map=risk_colors
         )
         apply_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Risk Summary")
-    col1, col2, col3, col4 = st.columns(4
-    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
     col1.metric("🟢 Low", low_count)
     col2.metric("🟡 Moderate", moderate_count)
     col3.metric("🟠 High", high_count)
@@ -384,12 +394,17 @@ if page == "Dashboard":
 
     st.divider()
     st.subheader("📈 Academic Performance Analytics")
+
     col1, col2 = st.columns(2)
 
     with col1:
         fig = px.scatter(
-            students, x="Attendance", y="Marks", size="Assignments",
-            color="Risk", color_discrete_map=risk_colors,
+            students,
+            x="Attendance",
+            y="Marks",
+            size="Assignments",
+            color="Risk",
+            color_discrete_map=risk_colors,
             hover_name="Student",
             hover_data=["Student ID", "Assignments", "Risk Score"],
             title="Attendance vs Marks"
@@ -402,9 +417,13 @@ if page == "Dashboard":
             "Metric": ["Attendance", "Marks", "Assignments"],
             "Average": [average_attendance, average_marks, average_assignments]
         })
+
         fig = px.bar(
-            performance_data, x="Metric", y="Average",
-            color="Metric", text_auto=".1f",
+            performance_data,
+            x="Metric",
+            y="Average",
+            color="Metric",
+            text_auto=".1f",
             title="Average Performance Indicators"
         )
         fig.update_layout(yaxis_range=[0, 100])
@@ -484,7 +503,6 @@ if page == "Dashboard":
 
     st.dataframe(semester_summary.round(2), use_container_width=True, hide_index=True)
 
-    st.caption("Risk classification is rule-based. A trained ML model will be added in a later phase.")
 
 # =========================================================
 # 9. STUDENT MANAGEMENT SYSTEM
@@ -501,15 +519,6 @@ elif page == "Student Management":
         "✏️ Edit Student",
         "🗑️ Delete Student"
     ])
-elif page == "Risk Prediction Center":
-
-    from risk_prediction import render_risk_prediction_page
-
-    render_risk_prediction_page(
-        students,
-        apply_chart_theme,
-        risk_colors
-    )
 
     # -----------------------------------------------------
     # TAB 1: RECORDS, SEARCH & PROFILE
@@ -566,7 +575,9 @@ elif page == "Risk Prediction Center":
         st.divider()
         st.subheader("📄 Download Student Records")
 
-        csv_data = filtered.drop(columns=["Risk Score"], errors="ignore").to_csv(index=False).encode("utf-8")
+        csv_data = filtered.drop(
+            columns=["Risk Score"], errors="ignore"
+        ).to_csv(index=False).encode("utf-8")
 
         st.download_button(
             "⬇️ Download CSV",
@@ -589,6 +600,7 @@ elif page == "Risk Prediction Center":
             profile = filtered[filtered["Student"] == chosen].iloc[0]
 
             col1, col2, col3, col4 = st.columns(4)
+
             col1.metric("Attendance", f"{profile['Attendance']}%")
             col2.metric("Marks", f"{profile['Marks']}%")
             col3.metric("Assignments", f"{profile['Assignments']}%")
@@ -602,16 +614,26 @@ elif page == "Risk Prediction Center":
 
             profile_chart = pd.DataFrame({
                 "Metric": ["Attendance", "Marks", "Assignments"],
-                "Value": [profile["Attendance"], profile["Marks"], profile["Assignments"]]
+                "Value": [
+                    profile["Attendance"],
+                    profile["Marks"],
+                    profile["Assignments"]
+                ]
             })
 
             fig = px.bar(
-                profile_chart, x="Metric", y="Value",
-                color="Metric", text_auto=".1f"
+                profile_chart,
+                x="Metric",
+                y="Value",
+                color="Metric",
+                text_auto=".1f"
             )
             fig.update_layout(yaxis_range=[0, 100])
             apply_chart_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
+
+        else:
+            st.info("No students match the selected filters.")
 
     # -----------------------------------------------------
     # TAB 2: ADD STUDENT
@@ -642,7 +664,10 @@ elif page == "Risk Prediction Center":
             with col3:
                 new_assignments = st.number_input("Assignments (%)", 0.0, 100.0, 60.0)
 
-            submitted = st.form_submit_button("➕ Register Student", use_container_width=True)
+            submitted = st.form_submit_button(
+                "➕ Register Student",
+                use_container_width=True
+            )
 
             if submitted:
 
@@ -686,18 +711,25 @@ elif page == "Risk Prediction Center":
                 key="edit_student_select"
             )
 
-            edit_record = students[students["Student"] == edit_student_name].iloc[0]
+            edit_record = students[
+                students["Student"] == edit_student_name
+            ].iloc[0]
 
             st.info(f"USN: {edit_record['Student ID']}")
 
             with st.form("edit_student_form"):
 
-                edit_name = st.text_input("Student Name", value=edit_record["Student"])
+                edit_name = st.text_input(
+                    "Student Name",
+                    value=edit_record["Student"]
+                )
+
                 edit_department = st.selectbox(
                     "Department",
                     ["CSE"],
                     index=0
                 )
+
                 edit_semester = st.selectbox(
                     "Semester",
                     list(range(1, 9)),
@@ -708,23 +740,32 @@ elif page == "Risk Prediction Center":
 
                 with col1:
                     edit_attendance = st.number_input(
-                        "Attendance (%)", 0.0, 100.0,
+                        "Attendance (%)",
+                        0.0,
+                        100.0,
                         float(edit_record["Attendance"])
                     )
 
                 with col2:
                     edit_marks = st.number_input(
-                        "Marks (%)", 0.0, 100.0,
+                        "Marks (%)",
+                        0.0,
+                        100.0,
                         float(edit_record["Marks"])
                     )
 
                 with col3:
                     edit_assignments = st.number_input(
-                        "Assignments (%)", 0.0, 100.0,
+                        "Assignments (%)",
+                        0.0,
+                        100.0,
                         float(edit_record["Assignments"])
                     )
 
-                save_changes = st.form_submit_button("💾 Save Changes", use_container_width=True)
+                save_changes = st.form_submit_button(
+                    "💾 Save Changes",
+                    use_container_width=True
+                )
 
                 if save_changes:
 
@@ -734,7 +775,9 @@ elif page == "Risk Prediction Center":
                     else:
 
                         updated = students.copy()
-                        idx = updated.index[updated["Student"] == edit_student_name][0]
+                        idx = updated.index[
+                            updated["Student"] == edit_student_name
+                        ][0]
 
                         updated.loc[idx, "Student"] = edit_name.strip()
                         updated.loc[idx, "Department"] = edit_department
@@ -790,8 +833,39 @@ elif page == "Risk Prediction Center":
                 st.success(f"{delete_student_name} was deleted.")
                 st.rerun()
 
+
 # =========================================================
-# 10. RISK ANALYTICS
+# 10. RISK PREDICTION CENTER
+# =========================================================
+
+elif page == "Risk Prediction Center":
+
+    from risk_prediction import render_risk_prediction_page
+
+    render_risk_prediction_page(
+        students,
+        apply_chart_theme,
+        risk_colors
+    )
+
+
+# =========================================================
+# 11. EXPLAINABLE AI
+# =========================================================
+
+elif page == "Explainable AI":
+
+    from explainable_ai import render_explainable_ai
+
+    render_explainable_ai(
+        students,
+        apply_chart_theme,
+        risk_colors
+    )
+
+
+# =========================================================
+# 12. RISK ANALYTICS
 # =========================================================
 
 elif page == "Risk Analytics":
@@ -800,6 +874,7 @@ elif page == "Risk Analytics":
     st.caption("Explore academic indicators and risk patterns.")
 
     col1, col2, col3 = st.columns(3)
+
     col1.metric("Average Attendance", f"{average_attendance:.1f}%")
     col2.metric("Average Marks", f"{average_marks:.1f}%")
     col3.metric("Average Assignments", f"{average_assignments:.1f}%")
@@ -808,7 +883,10 @@ elif page == "Risk Analytics":
     st.subheader("Risk Score Distribution")
 
     fig = px.histogram(
-        students, x="Risk Score", color="Risk", nbins=10,
+        students,
+        x="Risk Score",
+        color="Risk",
+        nbins=10,
         color_discrete_map=risk_colors
     )
     apply_chart_theme(fig)
@@ -818,9 +896,18 @@ elif page == "Risk Analytics":
 
     performance_data = students[
         ["Student", "Attendance", "Marks", "Assignments"]
-    ].melt(id_vars="Student", var_name="Metric", value_name="Value")
+    ].melt(
+        id_vars="Student",
+        var_name="Metric",
+        value_name="Value"
+    )
 
-    fig = px.box(performance_data, x="Metric", y="Value", color="Metric")
+    fig = px.box(
+        performance_data,
+        x="Metric",
+        y="Value",
+        color="Metric"
+    )
     apply_chart_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -832,8 +919,9 @@ elif page == "Risk Analytics":
 
     st.dataframe(risk_analysis.round(2), use_container_width=True)
 
+
 # =========================================================
-# 11. EARLY WARNING CENTER
+# 13. EARLY WARNING CENTER
 # =========================================================
 
 elif page == "Early Warning Center":
@@ -846,6 +934,7 @@ elif page == "Early Warning Center":
     assignment_alerts = students[students["Assignments"] < 50]
 
     col1, col2, col3 = st.columns(3)
+
     col1.metric("Attendance Alerts", len(attendance_alerts))
     col2.metric("Marks Alerts", len(marks_alerts))
     col3.metric("Assignment Alerts", len(assignment_alerts))
@@ -854,26 +943,36 @@ elif page == "Early Warning Center":
     st.subheader("⚠️ Attendance Below 60%")
 
     st.dataframe(
-        attendance_alerts[["Student ID", "Student", "Attendance", "Marks", "Risk"]],
-        use_container_width=True, hide_index=True
+        attendance_alerts[[
+            "Student ID", "Student", "Attendance", "Marks", "Risk"
+        ]],
+        use_container_width=True,
+        hide_index=True
     )
 
     st.subheader("📉 Marks Below 50%")
 
     st.dataframe(
-        marks_alerts[["Student ID", "Student", "Marks", "Attendance", "Risk"]],
-        use_container_width=True, hide_index=True
+        marks_alerts[[
+            "Student ID", "Student", "Marks", "Attendance", "Risk"
+        ]],
+        use_container_width=True,
+        hide_index=True
     )
 
     st.subheader("📝 Assignment Scores Below 50%")
 
     st.dataframe(
-        assignment_alerts[["Student ID", "Student", "Assignments", "Risk"]],
-        use_container_width=True, hide_index=True
+        assignment_alerts[[
+            "Student ID", "Student", "Assignments", "Risk"
+        ]],
+        use_container_width=True,
+        hide_index=True
     )
 
+
 # =========================================================
-# 12. RECOVERY PLANS
+# 14. RECOVERY PLANS
 # =========================================================
 
 elif page == "Recovery Plans":
@@ -886,6 +985,7 @@ elif page == "Recovery Plans":
     ].sort_values("Risk Score", ascending=False)
 
     if recovery_students.empty:
+
         st.success("No students currently require recovery plans.")
 
     else:
@@ -903,6 +1003,7 @@ elif page == "Recovery Plans":
         st.subheader("Student Overview")
 
         col1, col2, col3, col4 = st.columns(4)
+
         col1.metric("Attendance", f"{student['Attendance']}%")
         col2.metric("Marks", f"{student['Marks']}%")
         col3.metric("Assignments", f"{student['Assignments']}%")
@@ -940,8 +1041,9 @@ elif page == "Recovery Plans":
 
         st.info("Recommended actions should be reviewed by faculty or mentors.")
 
+
 # =========================================================
-# 13. ABOUT PROJECT
+# 15. ABOUT PROJECT
 # =========================================================
 
 elif page == "About Project":
@@ -961,6 +1063,8 @@ elif page == "About Project":
     - Student profiles
     - Student record editing and deletion
     - Risk classification and scoring
+    - Machine learning risk prediction
+    - Explainable AI risk analysis
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -990,13 +1094,13 @@ elif page == "About Project":
     - Plotly
     - Scikit-learn
 
-    ### Planned Enhancements
+    ### Advanced AI Features
 
     - Machine learning risk prediction
     - Explainable AI
     - Risk forecasting
     - Student clustering
-    - What-if simulator
+    - Academic what-if simulator
     - Intervention effectiveness analysis
     - Database integration
     - Role-based login
@@ -1007,12 +1111,14 @@ elif page == "About Project":
     st.divider()
 
     st.info(
-        "Current risk classification is rule-based. "
-        "Machine learning integration is planned for a later phase."
+        "The current risk classification is rule-based. "
+        The machine learning module is trained using synthetic academic data "
+        and is intended for demonstration and experimentation."
     )
 
+
 # =========================================================
-# 14. FOOTER
+# 16. FOOTER
 # =========================================================
 
 st.sidebar.divider()

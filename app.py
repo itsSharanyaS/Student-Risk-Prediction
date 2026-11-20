@@ -273,6 +273,7 @@ page = st.sidebar.radio(
         "Risk Prediction Center",
         "Explainable AI",
         "Risk Forecasting",
+        "What-If Simulator",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -869,7 +870,22 @@ elif page == "Risk Forecasting":
 
 
 # =========================================================
-# 13. RISK ANALYTICS
+# 13. ACADEMIC WHAT-IF SIMULATOR
+# =========================================================
+
+elif page == "What-If Simulator":
+
+    from what_if_simulator import render_what_if_simulator
+
+    render_what_if_simulator(
+        students,
+        apply_chart_theme,
+        risk_colors
+    )
+
+
+# =========================================================
+# 14. RISK ANALYTICS
 # =========================================================
 
 elif page == "Risk Analytics":
@@ -925,7 +941,7 @@ elif page == "Risk Analytics":
 
 
 # =========================================================
-# 14. EARLY WARNING CENTER
+# 15. EARLY WARNING CENTER
 # =========================================================
 
 elif page == "Early Warning Center":
@@ -976,7 +992,7 @@ elif page == "Early Warning Center":
 
 
 # =========================================================
-# 15. RECOVERY PLANS
+# 16. RECOVERY PLANS
 # =========================================================
 
 elif page == "Recovery Plans":
@@ -1047,7 +1063,7 @@ elif page == "Recovery Plans":
 
 
 # =========================================================
-# 16. ABOUT PROJECT
+# 17. ABOUT PROJECT
 # =========================================================
 
 elif page == "About Project":
@@ -1070,6 +1086,7 @@ elif page == "About Project":
     - Machine learning risk prediction
     - Explainable AI risk analysis
     - Risk forecasting simulation
+    - Academic What-If Simulator
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -1104,8 +1121,8 @@ elif page == "About Project":
     - Machine learning risk prediction
     - Explainable AI
     - Risk forecasting
+    - Academic What-If Simulator
     - Student clustering
-    - Academic what-if simulator
     - Intervention effectiveness analysis
     - Database integration
     - Role-based login
@@ -1123,7 +1140,7 @@ elif page == "About Project":
 
 
 # =========================================================
-# 17. FOOTER
+# 18. FOOTER
 # =========================================================
 
 st.sidebar.divider()

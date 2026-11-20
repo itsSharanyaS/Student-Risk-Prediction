@@ -1,11 +1,14 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
+from pathlib import Path
 
 # =========================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # =========================================================
+
 st.set_page_config(
     page_title="Student Risk Prediction",
     page_icon="🎓",
@@ -16,167 +19,273 @@ st.set_page_config(
 # =========================================================
 # CUSTOM CSS
 # =========================================================
+
 st.markdown("""
 <style>
-
 .stApp {
     background-color: #0B1120;
     color: #E5E7EB;
 }
-
 [data-testid="stSidebar"] {
     background-color: #111827;
-    border-right: 1px solid #1F2937;
 }
-
-[data-testid="stMetric"] {
-    background-color: #172033;
-    padding: 18px;
-    border: 1px solid #273449;
-    border-radius: 14px;
+.metric-card {
+    background: linear-gradient(135deg, #172033, #202B43);
+    padding: 22px;
+    border-radius: 16px;
+    border: 1px solid #2B3953;
 }
-
-[data-testid="stMetricLabel"] {
-    color: #9CA3AF;
-}
-
-[data-testid="stMetricValue"] {
+.section-title {
+    font-size: 24px;
+    font-weight: 700;
     color: #F8FAFC;
 }
-
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
+.small-text {
+    color: #94A3B8;
 }
-
-h1, h2, h3 {
-    color: #F8FAFC !important;
-}
-
-div[data-testid="stDataFrame"] {
-    border: 1px solid #263449;
-    border-radius: 12px;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# SAMPLE STUDENT DATA
+# RISK CALCULATION
 # =========================================================
-students = pd.DataFrame({
-    "Student ID": [
-        "STU001", "STU002", "STU003", "STU004",
-        "STU005", "STU006", "STU007", "STU008",
-        "STU009", "STU010", "STU011", "STU012"
-    ],
 
-    "Student": [
-        "Aarav Sharma", "Ananya Rao", "Rohan Kumar",
-        "Meera Nair", "Arjun Patel", "Sneha Iyer",
-        "Kiran Reddy", "Diya Shah", "Rahul Das",
-        "Pooja Singh", "Vikram Joshi", "Nisha Gowda"
-    ],
+def calculate_risk(row):
 
-    "Department": [
-        "CSE", "CSE", "ISE", "CSE", "ECE", "ISE",
-        "CSE", "ECE", "ISE", "CSE", "ECE", "CSE"
-    ],
+    attendance = row["Attendance"]
+    marks = row["Marks"]
+    assignments = row["Assignments"]
 
-    "Attendance": [
-        92, 78, 56, 88, 64, 95, 49, 81, 58, 90, 72, 45
-    ],
+    if attendance < 50 or marks < 35:
+        return "Critical"
 
-    "Marks": [
-        89, 76, 42, 91, 54, 96, 35, 73, 48, 85, 68, 32
-    ],
+    elif attendance < 60 or marks < 50 or assignments < 50:
+        return "High"
 
-    "Assignments": [
-        95, 80, 45, 90, 60, 98, 35, 75, 50, 88, 70, 40
-    ],
+    elif attendance < 80 or marks < 75 or assignments < 75:
+        return "Moderate"
 
-    "Risk": [
-        "Low", "Moderate", "High", "Low",
-        "Moderate", "Low", "Critical", "Moderate",
-        "High", "Low", "Moderate", "Critical"
+    else:
+        return "Low"
+
+
+def calculate_risk_score(row):
+
+    score = 0
+
+    # Attendance risk
+    if row["Attendance"] < 50:
+        score += 40
+    elif row["Attendance"] < 60:
+        score += 30
+    elif row["Attendance"] < 75:
+        score += 15
+
+    # Marks risk
+    if row["Marks"] < 35:
+        score += 35
+    elif row["Marks"] < 50:
+        score += 25
+    elif row["Marks"] < 65:
+        score += 15
+
+    # Assignment risk
+    if row["Assignments"] < 40:
+        score += 25
+    elif row["Assignments"] < 60:
+        score += 15
+    elif row["Assignments"] < 75:
+        score += 10
+
+    return min(score, 100)
+
+
+# =========================================================
+# LOAD DATASET
+# =========================================================
+
+@st.cache_data
+def load_students():
+
+    file_path = Path("data/students.csv")
+
+    if not file_path.exists():
+        return None
+
+    df = pd.read_csv(file_path)
+
+    df.columns = df.columns.str.strip().str.lower()
+
+    required_columns = [
+        "student_id",
+        "name",
+        "department",
+        "semester",
+        "attendance",
+        "marks",
+        "assignments"
     ]
-})
 
-# =========================================================
-# RISK COLORS
-# =========================================================
-RISK_COLORS = {
-    "Low": "#10B981",
-    "Moderate": "#F59E0B",
-    "High": "#F97316",
-    "Critical": "#EF4444"
-}
+    missing_columns = [
+        column for column in required_columns
+        if column not in df.columns
+    ]
+
+    if missing_columns:
+        st.error(
+            "Missing columns in students.csv: "
+            + ", ".join(missing_columns)
+        )
+        st.stop()
+
+    df = df.rename(columns={
+        "student_id": "Student ID",
+        "name": "Student",
+        "department": "Department",
+        "semester": "Semester",
+        "attendance": "Attendance",
+        "marks": "Marks",
+        "assignments": "Assignments"
+    })
+
+    numeric_columns = [
+        "Attendance",
+        "Marks",
+        "Assignments",
+        "Semester"
+    ]
+
+    for column in numeric_columns:
+        df[column] = pd.to_numeric(
+            df[column],
+            errors="coerce"
+        )
+
+    df = df.dropna(
+        subset=[
+            "Student ID",
+            "Student",
+            "Attendance",
+            "Marks",
+            "Assignments"
+        ]
+    )
+
+    df["Risk"] = df.apply(calculate_risk, axis=1)
+
+    df["Risk Score"] = df.apply(
+        calculate_risk_score,
+        axis=1
+    )
+
+    return df
+
+
+students = load_students()
+
+if students is None:
+    st.error("students.csv not found!")
+    st.info(
+        "Please create the file data/students.csv "
+        "inside your GitHub repository."
+    )
+    st.stop()
+
 
 # =========================================================
 # SIDEBAR
 # =========================================================
-st.sidebar.markdown("# 🎓 Student Risk AI")
-st.sidebar.caption("Academic Intelligence Platform")
+
+st.sidebar.title("🎓 Student Intelligence")
+st.sidebar.caption("Academic Risk Monitoring System")
 
 st.sidebar.divider()
 
 page = st.sidebar.radio(
-    "NAVIGATION",
+    "Navigation",
     [
         "Dashboard",
         "Student Directory",
         "Risk Analytics",
         "Early Warning Center",
-        "Recovery Plans"
+        "Recovery Plans",
+        "About Project"
     ]
 )
 
 st.sidebar.divider()
 
-st.sidebar.markdown("### System Status")
-st.sidebar.success("System Online")
+st.sidebar.markdown("### 🎯 Risk Categories")
 
-st.sidebar.markdown("---")
-st.sidebar.caption("Student Risk Prediction")
-st.sidebar.caption("Academic Intelligence Platform v1.0")
+st.sidebar.markdown("🟢 **Low Risk**")
+st.sidebar.markdown("🟡 **Moderate Risk**")
+st.sidebar.markdown("🟠 **High Risk**")
+st.sidebar.markdown("🔴 **Critical Risk**")
+
+st.sidebar.divider()
+
+st.sidebar.caption("AI-Powered Student Risk Prediction")
+
+
+# =========================================================
+# COLOR SETTINGS
+# =========================================================
+
+risk_colors = {
+    "Low": "#22C55E",
+    "Moderate": "#F59E0B",
+    "High": "#F97316",
+    "Critical": "#EF4444"
+}
+
+risk_order = ["Low", "Moderate", "High", "Critical"]
+
+
+# =========================================================
+# COMMON METRICS
+# =========================================================
+
+total_students = len(students)
+
+low_count = (students["Risk"] == "Low").sum()
+moderate_count = (students["Risk"] == "Moderate").sum()
+high_count = (students["Risk"] == "High").sum()
+critical_count = (students["Risk"] == "Critical").sum()
+
+at_risk_count = high_count + critical_count
+
+average_attendance = students["Attendance"].mean()
+average_marks = students["Marks"].mean()
+average_assignments = students["Assignments"].mean()
+
 
 # =========================================================
 # DASHBOARD
 # =========================================================
+
 if page == "Dashboard":
 
-    st.title("Academic Intelligence Dashboard")
+    st.title("🎓 Student Risk Prediction Dashboard")
 
     st.markdown(
-        "Monitor academic performance, identify students at risk "
-        "and support better academic outcomes."
+        "Monitor academic performance, identify at-risk students, "
+        "and understand student progress."
     )
 
-    # ---------------- METRICS ----------------
-    total_students = len(students)
+    st.divider()
 
-    high_risk_students = students[
-        students["Risk"].isin(["High", "Critical"])
-    ]
-
-    high_risk_count = len(high_risk_students)
-
-    average_attendance = students["Attendance"].mean()
-
-    average_marks = students["Marks"].mean()
+    # KPI CARDS
 
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
         "Total Students",
-        total_students,
-        help="Total students in the sample dataset"
+        total_students
     )
 
     col2.metric(
-        "Students At Risk",
-        high_risk_count,
-        help="Students classified as High or Critical"
+        "Students at Risk",
+        at_risk_count
     )
 
     col3.metric(
@@ -185,353 +294,713 @@ if page == "Dashboard":
     )
 
     col4.metric(
-        "Average Academic Score",
+        "Average Marks",
         f"{average_marks:.1f}%"
     )
 
-    st.markdown("---")
+    st.divider()
 
-    # ---------------- CHARTS ----------------
-    chart_col1, chart_col2 = st.columns(2)
+    # RISK DISTRIBUTION
 
-    with chart_col1:
+    st.subheader("📊 Student Risk Distribution")
 
-        st.subheader("Student Risk Distribution")
+    risk_distribution = (
+        students["Risk"]
+        .value_counts()
+        .reindex(risk_order, fill_value=0)
+        .reset_index()
+    )
 
-        risk_counts = (
-            students["Risk"]
-            .value_counts()
-            .reindex(["Low", "Moderate", "High", "Critical"], fill_value=0)
-            .reset_index()
-        )
+    risk_distribution.columns = ["Risk Level", "Students"]
 
-        risk_counts.columns = ["Risk Level", "Students"]
+    col1, col2 = st.columns(2)
 
-        fig_pie = px.pie(
-            risk_counts,
+    with col1:
+
+        fig = px.pie(
+            risk_distribution,
             names="Risk Level",
             values="Students",
-            hole=0.65,
             color="Risk Level",
-            color_discrete_map=RISK_COLORS
+            color_discrete_map=risk_colors,
+            hole=0.55
         )
 
-        fig_pie.update_layout(
+        fig.update_layout(
             template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            legend_title_text="",
-            margin=dict(t=30, b=20, l=20, r=20)
+            paper_bgcolor="#0B1120",
+            plot_bgcolor="#0B1120"
         )
 
         st.plotly_chart(
-            fig_pie,
+            fig,
             use_container_width=True
         )
 
-    with chart_col2:
+    with col2:
 
-        st.subheader("Attendance vs Academic Performance")
-
-        fig_scatter = px.scatter(
-            students,
-            x="Attendance",
-            y="Marks",
-            color="Risk",
-            color_discrete_map=RISK_COLORS,
-            hover_name="Student",
-            hover_data=["Department", "Assignments"],
-            size="Assignments",
-            size_max=18
+        fig = px.bar(
+            risk_distribution,
+            x="Risk Level",
+            y="Students",
+            color="Risk Level",
+            color_discrete_map=risk_colors,
+            text="Students"
         )
 
-        fig_scatter.update_layout(
+        fig.update_layout(
             template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="#111827",
-            xaxis_title="Attendance (%)",
-            yaxis_title="Academic Marks (%)"
+            paper_bgcolor="#0B1120",
+            plot_bgcolor="#0B1120"
         )
 
         st.plotly_chart(
-            fig_scatter,
+            fig,
             use_container_width=True
         )
 
-    # ---------------- RISK ALERT TABLE ----------------
+    # PERFORMANCE ANALYSIS
+
+    st.subheader("📈 Attendance vs Academic Performance")
+
+    fig = px.scatter(
+        students,
+        x="Attendance",
+        y="Marks",
+        color="Risk",
+        color_discrete_map=risk_colors,
+        hover_data=[
+            "Student",
+            "Student ID",
+            "Assignments"
+        ],
+        size="Assignments",
+        title="Student Performance Analysis"
+    )
+
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="#0B1120",
+        plot_bgcolor="#0B1120"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+    # STUDENTS NEEDING ATTENTION
+
     st.subheader("🚨 Students Requiring Attention")
 
-    alerts = students[
+    attention_students = students[
         students["Risk"].isin(["High", "Critical"])
-    ].sort_values("Attendance")
+    ].sort_values(
+        by="Risk Score",
+        ascending=False
+    )
+
+    if len(attention_students) > 0:
+
+        st.dataframe(
+            attention_students[
+                [
+                    "Student ID",
+                    "Student",
+                    "Attendance",
+                    "Marks",
+                    "Assignments",
+                    "Risk",
+                    "Risk Score"
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.success("No high-risk students identified.")
+
+    st.divider()
+
+    st.caption(
+        "Risk levels are currently generated using preliminary "
+        "rule-based thresholds. They are not ML model predictions."
+    )
+
+
+# =========================================================
+# STUDENT DIRECTORY
+# =========================================================
+
+elif page == "Student Directory":
+
+    st.title("👨‍🎓 Student Directory")
+
+    st.write(
+        "Search, filter, and explore student academic information."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        search_query = st.text_input(
+            "🔍 Search Student Name or USN"
+        )
+
+    with col2:
+
+        selected_risk = st.selectbox(
+            "Filter by Risk Level",
+            [
+                "All",
+                "Low",
+                "Moderate",
+                "High",
+                "Critical"
+            ]
+        )
+
+    filtered_students = students.copy()
+
+    if search_query:
+
+        filtered_students = filtered_students[
+            filtered_students["Student"].str.contains(
+                search_query,
+                case=False,
+                na=False
+            )
+            |
+            filtered_students["Student ID"].str.contains(
+                search_query,
+                case=False,
+                na=False
+            )
+        ]
+
+    if selected_risk != "All":
+
+        filtered_students = filtered_students[
+            filtered_students["Risk"] == selected_risk
+        ]
+
+    st.metric(
+        "Students Found",
+        len(filtered_students)
+    )
 
     st.dataframe(
-        alerts[
-            ["Student ID", "Student", "Department",
-             "Attendance", "Marks", "Risk"]
+        filtered_students[
+            [
+                "Student ID",
+                "Student",
+                "Department",
+                "Semester",
+                "Attendance",
+                "Marks",
+                "Assignments",
+                "Risk",
+                "Risk Score"
+            ]
         ],
         use_container_width=True,
         hide_index=True
     )
 
-    st.caption(
-        "Note: This dashboard currently uses sample data. "
-        "Risk classifications are illustrative and are not generated "
-        "by a trained machine learning model."
-    )
+    st.divider()
 
-# =========================================================
-# STUDENT DIRECTORY
-# =========================================================
-elif page == "Student Directory":
+    st.subheader("🔎 Individual Student Profile")
 
-    st.title("Student Directory")
+    if len(filtered_students) > 0:
 
-    st.caption("Search, filter and explore student academic records.")
+        selected_student = st.selectbox(
+            "Select a student",
+            filtered_students["Student"].tolist()
+        )
 
-    search = st.text_input(
-        "🔍 Search by student name or ID",
-        placeholder="Enter name or student ID..."
-    )
+        profile = filtered_students[
+            filtered_students["Student"] == selected_student
+        ].iloc[0]
 
-    department_filter = st.selectbox(
-        "Filter by Department",
-        ["All Departments"] + sorted(students["Department"].unique().tolist())
-    )
+        col1, col2, col3, col4 = st.columns(4)
 
-    risk_filter = st.selectbox(
-        "Filter by Risk Level",
-        ["All Risk Levels", "Low", "Moderate", "High", "Critical"]
-    )
+        col1.metric(
+            "Attendance",
+            f"{profile['Attendance']}%"
+        )
 
-    filtered_students = students.copy()
+        col2.metric(
+            "Marks",
+            f"{profile['Marks']}%"
+        )
 
-    if search:
-        filtered_students = filtered_students[
-            filtered_students["Student"].str.contains(
-                search, case=False, na=False
-            )
-            |
-            filtered_students["Student ID"].str.contains(
-                search, case=False, na=False
-            )
-        ]
+        col3.metric(
+            "Assignments",
+            f"{profile['Assignments']}%"
+        )
 
-    if department_filter != "All Departments":
-        filtered_students = filtered_students[
-            filtered_students["Department"] == department_filter
-        ]
+        col4.metric(
+            "Risk Score",
+            profile["Risk Score"]
+        )
 
-    if risk_filter != "All Risk Levels":
-        filtered_students = filtered_students[
-            filtered_students["Risk"] == risk_filter
-        ]
+        st.markdown(f"### Student: {profile['Student']}")
 
-    st.metric("Matching Students", len(filtered_students))
+        st.write("**USN:**", profile["Student ID"])
+        st.write("**Department:**", profile["Department"])
+        st.write("**Semester:**", profile["Semester"])
 
-    st.dataframe(
-        filtered_students,
-        use_container_width=True,
-        hide_index=True
-    )
+        risk = profile["Risk"]
+
+        if risk == "Low":
+            st.success(f"Risk Status: {risk}")
+
+        elif risk == "Moderate":
+            st.warning(f"Risk Status: {risk}")
+
+        else:
+            st.error(f"Risk Status: {risk}")
+
+        profile_data = pd.DataFrame({
+            "Metric": [
+                "Attendance",
+                "Marks",
+                "Assignments"
+            ],
+            "Value": [
+                profile["Attendance"],
+                profile["Marks"],
+                profile["Assignments"]
+            ]
+        })
+
+        fig = px.bar(
+            profile_data,
+            x="Metric",
+            y="Value",
+            text="Value",
+            color="Metric"
+        )
+
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0B1120",
+            plot_bgcolor="#0B1120",
+            yaxis_range=[0, 100]
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
 
 # =========================================================
 # RISK ANALYTICS
 # =========================================================
+
 elif page == "Risk Analytics":
 
-    st.title("Risk Analytics")
+    st.title("📊 Academic Risk Analytics")
 
-    st.caption(
-        "Explore student academic performance and department-level patterns."
+    st.write(
+        "Explore academic indicators and identify performance patterns."
     )
 
-    # Marks comparison
-    st.subheader("Student Performance Comparison")
+    col1, col2, col3 = st.columns(3)
 
-    fig_marks = px.bar(
+    col1.metric(
+        "Average Attendance",
+        f"{average_attendance:.2f}%"
+    )
+
+    col2.metric(
+        "Average Marks",
+        f"{average_marks:.2f}%"
+    )
+
+    col3.metric(
+        "Average Assignments",
+        f"{average_assignments:.2f}%"
+    )
+
+    st.divider()
+
+    st.subheader("📉 Risk Score Distribution")
+
+    fig = px.histogram(
         students,
-        x="Student",
-        y="Marks",
+        x="Risk Score",
+        nbins=10,
         color="Risk",
-        color_discrete_map=RISK_COLORS,
-        hover_data=["Department", "Attendance"]
+        color_discrete_map=risk_colors
     )
 
-    fig_marks.update_layout(
+    fig.update_layout(
         template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="#111827",
-        xaxis_title="Student",
-        yaxis_title="Marks (%)"
+        paper_bgcolor="#0B1120",
+        plot_bgcolor="#0B1120"
     )
 
     st.plotly_chart(
-        fig_marks,
+        fig,
         use_container_width=True
     )
 
-    # Department analysis
-    st.subheader("Department Performance")
+    st.subheader("📚 Academic Performance Comparison")
 
-    department_analysis = students.groupby(
-        "Department"
-    ).agg(
-        Students=("Student", "count"),
-        Average_Marks=("Marks", "mean"),
-        Average_Attendance=("Attendance", "mean"),
-        Average_Assignments=("Assignments", "mean")
-    ).reset_index()
+    performance_data = students[
+        ["Student", "Attendance", "Marks", "Assignments"]
+    ].melt(
+        id_vars="Student",
+        var_name="Metric",
+        value_name="Value"
+    )
 
-    department_analysis = department_analysis.round(2)
+    fig = px.box(
+        performance_data,
+        x="Metric",
+        y="Value",
+        color="Metric"
+    )
+
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="#0B1120",
+        plot_bgcolor="#0B1120"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+    st.subheader("🎯 Risk-Level Performance")
+
+    risk_analysis = students.groupby("Risk")[
+        ["Attendance", "Marks", "Assignments"]
+    ].mean().reindex(risk_order)
 
     st.dataframe(
-        department_analysis,
-        use_container_width=True,
-        hide_index=True
-    )
-
-    # Attendance chart
-    st.subheader("Department Attendance")
-
-    fig_attendance = px.bar(
-        department_analysis,
-        x="Department",
-        y="Average_Attendance",
-        text="Average_Attendance"
-    )
-
-    fig_attendance.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="#111827",
-        yaxis_title="Average Attendance (%)"
-    )
-
-    st.plotly_chart(
-        fig_attendance,
+        risk_analysis.round(2),
         use_container_width=True
     )
+
 
 # =========================================================
 # EARLY WARNING CENTER
 # =========================================================
+
 elif page == "Early Warning Center":
 
     st.title("🚨 Early Warning Center")
 
-    st.caption(
-        "Identify students who may require academic attention."
+    st.write(
+        "Identify students with low attendance, poor marks, "
+        "or incomplete academic activities."
     )
 
-    warnings = students[
-        students["Risk"].isin(["High", "Critical"])
-    ].sort_values("Marks")
+    attendance_alerts = students[
+        students["Attendance"] < 60
+    ]
 
-    if warnings.empty:
+    marks_alerts = students[
+        students["Marks"] < 50
+    ]
 
-        st.success("No students currently require attention.")
+    assignment_alerts = students[
+        students["Assignments"] < 50
+    ]
 
-    else:
+    col1, col2, col3 = st.columns(3)
 
-        st.warning(
-            f"{len(warnings)} students require academic review."
-        )
+    col1.metric(
+        "Attendance Alerts",
+        len(attendance_alerts)
+    )
 
-        for _, row in warnings.iterrows():
+    col2.metric(
+        "Academic Alerts",
+        len(marks_alerts)
+    )
 
-            with st.expander(
-                f"{row['Student']} — {row['Risk']} Risk"
-            ):
+    col3.metric(
+        "Assignment Alerts",
+        len(assignment_alerts)
+    )
 
-                st.write(f"**Student ID:** {row['Student ID']}")
-                st.write(f"**Department:** {row['Department']}")
-                st.write(f"**Attendance:** {row['Attendance']}%")
-                st.write(f"**Marks:** {row['Marks']}%")
-                st.write(f"**Assignments:** {row['Assignments']}%")
+    st.divider()
 
-                if row["Attendance"] < 60:
+    st.subheader("⚠️ Students with Attendance Below 60%")
 
-                    st.warning(
-                        "Attendance is below 60%. "
-                        "Attendance improvement is recommended."
-                    )
+    st.dataframe(
+        attendance_alerts[
+            [
+                "Student ID",
+                "Student",
+                "Attendance",
+                "Marks",
+                "Risk"
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True
+    )
 
-                if row["Marks"] < 50:
+    st.subheader("📉 Students with Marks Below 50%")
 
-                    st.warning(
-                        "Academic performance is low. "
-                        "Subject-specific support is recommended."
-                    )
+    st.dataframe(
+        marks_alerts[
+            [
+                "Student ID",
+                "Student",
+                "Marks",
+                "Attendance",
+                "Risk"
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True
+    )
 
-                if row["Assignments"] < 50:
+    st.subheader("📝 Students with Assignment Scores Below 50%")
 
-                    st.warning(
-                        "Assignment completion is low. "
-                        "Pending assignments should be reviewed."
-                    )
+    st.dataframe(
+        assignment_alerts[
+            [
+                "Student ID",
+                "Student",
+                "Assignments",
+                "Risk"
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True
+    )
 
-                st.info(
-                    "Suggested action: Faculty mentor review, "
-                    "academic counseling and a personalized support plan."
-                )
 
 # =========================================================
 # RECOVERY PLANS
 # =========================================================
+
 elif page == "Recovery Plans":
 
-    st.title("Student Recovery & Support Plans")
+    st.title("🛠️ Student Recovery Plans")
 
-    st.caption(
-        "Track supportive actions that may help students improve."
+    st.write(
+        "Suggested academic improvement actions for students "
+        "who require additional support."
     )
 
     recovery_students = students[
-        students["Risk"].isin(["High", "Critical"])
-    ]
+        students["Risk"].isin(["High", "Critical", "Moderate"])
+    ].sort_values(
+        by="Risk Score",
+        ascending=False
+    )
 
-    if recovery_students.empty:
+    if len(recovery_students) == 0:
 
-        st.success("No recovery plans required.")
+        st.success(
+            "No students currently require recovery plans."
+        )
 
     else:
 
-        for _, row in recovery_students.iterrows():
+        selected_student = st.selectbox(
+            "Select Student",
+            recovery_students["Student"].tolist()
+        )
 
-            st.subheader(row["Student"])
+        student = recovery_students[
+            recovery_students["Student"] == selected_student
+        ].iloc[0]
+
+        st.divider()
+
+        st.subheader("👤 Student Overview")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Attendance",
+            f"{student['Attendance']}%"
+        )
+
+        col2.metric(
+            "Marks",
+            f"{student['Marks']}%"
+        )
+
+        col3.metric(
+            "Assignments",
+            f"{student['Assignments']}%"
+        )
+
+        col4.metric(
+            "Risk",
+            student["Risk"]
+        )
+
+        st.subheader("🎯 Recommended Actions")
+
+        if student["Attendance"] < 75:
+
+            st.warning("📅 Attendance Improvement Plan")
 
             st.write(
-                f"**Risk Level:** {row['Risk']}  |  "
-                f"**Attendance:** {row['Attendance']}%  |  "
-                f"**Marks:** {row['Marks']}%"
+                "- Attend all upcoming classes."
             )
 
-            st.write("### Recommended Action Plan")
+            st.write(
+                "- Meet the class mentor weekly."
+            )
 
-            tasks = [
-                "Schedule a meeting with faculty mentor",
-                "Improve class attendance",
-                "Complete pending assignments",
-                "Attend remedial classes for weak subjects",
-                "Create a weekly study timetable",
-                "Review academic progress with mentor"
-            ]
+            st.write(
+                "- Monitor attendance every week."
+            )
 
-            for task_index, task in enumerate(tasks):
+        if student["Marks"] < 75:
 
-                st.checkbox(
-                    task,
-                    key=f"{row['Student ID']}_{task_index}"
-                )
+            st.warning("📚 Academic Improvement Plan")
 
-            st.divider()
+            st.write(
+                "- Create a subject-wise study timetable."
+            )
+
+            st.write(
+                "- Attend remedial classes."
+            )
+
+            st.write(
+                "- Practice previous examination questions."
+            )
+
+        if student["Assignments"] < 75:
+
+            st.warning("📝 Assignment Improvement Plan")
+
+            st.write(
+                "- Complete pending assignments."
+            )
+
+            st.write(
+                "- Submit work before deadlines."
+            )
+
+            st.write(
+                "- Review assignment feedback."
+            )
+
+        st.divider()
+
+        st.subheader("✅ Mentor Follow-up Checklist")
+
+        st.checkbox("Student contacted")
+
+        st.checkbox("Mentor meeting completed")
+
+        st.checkbox("Study plan created")
+
+        st.checkbox("Attendance reviewed")
+
+        st.checkbox("Academic progress reviewed")
+
+        st.checkbox("Follow-up scheduled")
+
+        st.info(
+            "These are suggested support actions. "
+            "They should be reviewed by faculty or mentors."
+        )
+
+
+# =========================================================
+# ABOUT PROJECT
+# =========================================================
+
+elif page == "About Project":
+
+    st.title("🎓 About Student Risk Prediction")
+
+    st.markdown("""
+    ### AI-Powered Student Risk Prediction & Academic Intelligence Platform
+
+    This project is designed to analyze student academic indicators
+    and identify students who may require academic support.
+
+    ### Current Features
+
+    - Student academic dashboard
+    - Student directory and search
+    - Risk classification
+    - Risk score calculation
+    - Academic analytics
+    - Attendance monitoring
+    - Assignment monitoring
+    - Early warning center
+    - Individual student profile
+    - Recovery plans
+    - Mentor follow-up checklist
+
+    ### Academic Indicators
+
+    - Attendance percentage
+    - Academic marks
+    - Assignment performance
+
+    ### Risk Categories
+
+    🟢 Low Risk
+
+    🟡 Moderate Risk
+
+    🟠 High Risk
+
+    🔴 Critical Risk
+
+    ### Technology Stack
+
+    - Python
+    - Streamlit
+    - Pandas
+    - NumPy
+    - Plotly
+    - Scikit-learn (planned for ML model development)
+
+    ### Future Enhancements
+
+    - Machine Learning predictions
+    - Explainable AI
+    - Student risk forecasting
+    - Academic performance prediction
+    - Student clustering
+    - What-if simulation
+    - Intervention effectiveness analytics
+    - Database integration
+    - Login and role-based access
+    - PDF and Excel reports
+    """)
+
+    st.divider()
+
+    st.caption(
+        "Student Risk Prediction | Academic Intelligence Platform"
+    )
+
 
 # =========================================================
 # FOOTER
 # =========================================================
-st.markdown("---")
 
-st.caption(
-    "Student Risk Prediction | AI-Powered Academic Intelligence Platform"
+st.sidebar.markdown("---")
+
+st.sidebar.caption(
+    "Student Risk Prediction System"
+)
+
+st.sidebar.caption(
+    "Prototype • Rule-Based Risk Analysis"
 )

@@ -270,6 +270,7 @@ page = st.sidebar.radio(
         "Dashboard",
         "Student Management",
         "Risk Prediction Center",
+        "Explainable AI",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",

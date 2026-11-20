@@ -200,7 +200,7 @@ def load_students():
     ]
 
     if missing_columns:
-        raise Value ValueError(
+        raise ValueError(
             "Missing CSV columns: " + ", ".join(missing_columns)
         )
 

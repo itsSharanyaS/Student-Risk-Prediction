@@ -269,6 +269,7 @@ page = st.sidebar.radio(
     [
         "Dashboard",
         "Student Management",
+        "Risk Prediction Center",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -499,6 +500,15 @@ elif page == "Student Management":
         "✏️ Edit Student",
         "🗑️ Delete Student"
     ])
+elif page == "Risk Prediction Center":
+
+    from risk_prediction import render_risk_prediction_page
+
+    render_risk_prediction_page(
+        students,
+        apply_chart_theme,
+        risk_colors
+    )
 
     # -----------------------------------------------------
     # TAB 1: RECORDS, SEARCH & PROFILE

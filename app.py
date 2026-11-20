@@ -272,6 +272,7 @@ page = st.sidebar.radio(
         "Student Management",
         "Risk Prediction Center",
         "Explainable AI",
+        "Risk Forecasting",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -520,10 +521,7 @@ elif page == "Student Management":
         "🗑️ Delete Student"
     ])
 
-    # -----------------------------------------------------
     # TAB 1: RECORDS, SEARCH & PROFILE
-    # -----------------------------------------------------
-
     with tab1:
 
         st.subheader("Student Records")
@@ -635,10 +633,7 @@ elif page == "Student Management":
         else:
             st.info("No students match the selected filters.")
 
-    # -----------------------------------------------------
     # TAB 2: ADD STUDENT
-    # -----------------------------------------------------
-
     with tab2:
 
         st.subheader("➕ Register New Student")
@@ -695,10 +690,7 @@ elif page == "Student Management":
                     st.success(f"Student {new_name} registered successfully!")
                     st.rerun()
 
-    # -----------------------------------------------------
     # TAB 3: EDIT STUDENT
-    # -----------------------------------------------------
-
     with tab3:
 
         st.subheader("✏️ Update Student Records")
@@ -791,10 +783,7 @@ elif page == "Student Management":
                         st.success("Student records updated successfully!")
                         st.rerun()
 
-    # -----------------------------------------------------
     # TAB 4: DELETE STUDENT
-    # -----------------------------------------------------
-
     with tab4:
 
         st.subheader("🗑️ Remove Student Record")
@@ -865,7 +854,22 @@ elif page == "Explainable AI":
 
 
 # =========================================================
-# 12. RISK ANALYTICS
+# 12. RISK FORECASTING
+# =========================================================
+
+elif page == "Risk Forecasting":
+
+    from risk_forecasting import render_risk_forecasting
+
+    render_risk_forecasting(
+        students,
+        apply_chart_theme,
+        risk_colors
+    )
+
+
+# =========================================================
+# 13. RISK ANALYTICS
 # =========================================================
 
 elif page == "Risk Analytics":
@@ -921,7 +925,7 @@ elif page == "Risk Analytics":
 
 
 # =========================================================
-# 13. EARLY WARNING CENTER
+# 14. EARLY WARNING CENTER
 # =========================================================
 
 elif page == "Early Warning Center":
@@ -972,7 +976,7 @@ elif page == "Early Warning Center":
 
 
 # =========================================================
-# 14. RECOVERY PLANS
+# 15. RECOVERY PLANS
 # =========================================================
 
 elif page == "Recovery Plans":
@@ -1043,7 +1047,7 @@ elif page == "Recovery Plans":
 
 
 # =========================================================
-# 15. ABOUT PROJECT
+# 16. ABOUT PROJECT
 # =========================================================
 
 elif page == "About Project":
@@ -1065,6 +1069,7 @@ elif page == "About Project":
     - Risk classification and scoring
     - Machine learning risk prediction
     - Explainable AI risk analysis
+    - Risk forecasting simulation
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -1112,13 +1117,13 @@ elif page == "About Project":
 
     st.info(
         "The current risk classification is rule-based. "
-        The machine learning module is trained using synthetic academic data "
-        and is intended for demonstration and experimentation."
+        "The machine learning module is trained using synthetic academic data "
+        "and is intended for demonstration and experimentation."
     )
 
 
 # =========================================================
-# 16. FOOTER
+# 17. FOOTER
 # =========================================================
 
 st.sidebar.divider()

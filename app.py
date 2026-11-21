@@ -1072,6 +1072,10 @@ elif page == "Early Warning Center":
 
     render_early_warning(students)
 
+elif page == "Personalized Recovery Planner":
+
+    render_recovery_planner(students)
+
 
 # =========================================================
 # 18. RECOVERY PLANS

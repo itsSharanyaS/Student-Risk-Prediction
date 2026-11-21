@@ -1079,6 +1079,8 @@ elif page == "Early Warning Center":
 elif page == "Personalized Recovery Planner":
 
     render_recovery_planner(students)
+elif page == "Recovery Success Tracker":
+    render_recovery_success_tracker(students)
 
 
 # =========================================================

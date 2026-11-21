@@ -10,6 +10,7 @@ from modules.recovery_pathway import render_recovery_pathway
 from modules.faculty_dashboard import render_faculty_dashboard
 from modules.intervention_effectiveness import render_intervention_effectiveness
 from modules.academic_report_generator import render_academic_report_generator
+from modules.authentication import render_login, logout_user, is_authenticated, get_user_role, get_username
 
 # =========================================================
 # 1. PAGE CONFIGURATION
@@ -71,6 +72,18 @@ p, label {{color: {text_color};}}
 hr {{border-color: {border_color};}}
 </style>
 """, unsafe_allow_html=True)
+
+
+# =========================================================
+# 2A. AUTHENTICATION GATE (FEATURE 3.15)
+# =========================================================
+
+if not is_authenticated():
+    render_login()
+    st.stop()
+
+current_role = get_user_role()
+current_username = get_username()
 
 # =========================================================
 # 3. RISK COLORS & CALCULATIONS
@@ -271,29 +284,40 @@ st.sidebar.divider()
 st.sidebar.title("🎓 Student Intelligence")
 st.sidebar.caption("Academic monitoring and risk analysis platform")
 
-page = st.sidebar.radio(
-    "Navigation",
-    [
-        "Dashboard",
-        "Student Management",
-        "Risk Prediction Center",
-        "Explainable AI",
-        "Risk Forecasting",
-        "What-If Simulator",
-        "Student Risk Trend Analyzer",
-        "Subject-Level Intelligence",
-        "Student Clustering",
-        "Anomaly Detection",
-        "AI Recovery Pathway",
-        "Faculty / Mentor Dashboard",
-        "Intervention Effectiveness Analyzer",
-        "Academic Report Generator",
-        "Risk Analytics",
-        "Early Warning Center",
-        "Recovery Plans",
+role_pages = {
+    "Admin": [
+        "Dashboard", "Student Management", "Risk Prediction Center",
+        "Explainable AI", "Risk Forecasting", "What-If Simulator",
+        "Student Risk Trend Analyzer", "Subject-Level Intelligence",
+        "Student Clustering", "Anomaly Detection", "AI Recovery Pathway",
+        "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
+        "Academic Report Generator", "Risk Analytics", "Early Warning Center",
+        "Recovery Plans", "About Project"
+    ],
+    "Faculty": [
+        "Dashboard", "Risk Prediction Center", "Explainable AI",
+        "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
+        "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
+        "AI Recovery Pathway", "Faculty / Mentor Dashboard",
+        "Intervention Effectiveness Analyzer", "Academic Report Generator",
+        "Risk Analytics", "Early Warning Center", "Recovery Plans", "About Project"
+    ],
+    "Mentor": [
+        "Dashboard", "Student Risk Trend Analyzer", "AI Recovery Pathway",
+        "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
+        "Academic Report Generator", "Early Warning Center", "Recovery Plans",
         "About Project"
     ]
-)
+}
+
+available_pages = role_pages.get(current_role, role_pages["Mentor"])
+
+st.sidebar.markdown(f"### 👤 {current_username}")
+st.sidebar.caption(f"Role: {current_role}")
+if st.sidebar.button("🚪 Logout", use_container_width=True):
+    logout_user()
+
+page = st.sidebar.radio("Navigation", available_pages)
 
 st.sidebar.divider()
 st.sidebar.markdown("### Risk Legend")
@@ -317,6 +341,12 @@ def apply_chart_theme(fig, height=400):
     )
     return fig
 
+
+
+# Defensive role/page access check before rendering any page route.
+if page not in available_pages:
+    st.error("You do not have permission to access this page.")
+    st.stop()
 
 # =========================================================
 # 8. SMART DASHBOARD

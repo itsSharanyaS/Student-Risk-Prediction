@@ -9,6 +9,7 @@ from modules.anomaly_detection import render_anomaly_detection
 from modules.recovery_pathway import render_recovery_pathway
 from modules.faculty_dashboard import render_faculty_dashboard
 from modules.intervention_effectiveness import render_intervention_effectiveness
+from modules.academic_report_generator import render_academic_report_generator
 
 # =========================================================
 # 1. PAGE CONFIGURATION
@@ -286,6 +287,7 @@ page = st.sidebar.radio(
         "AI Recovery Pathway",
         "Faculty / Mentor Dashboard",
         "Intervention Effectiveness Analyzer",
+        "Academic Report Generator",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -965,6 +967,15 @@ elif page == "Intervention Effectiveness Analyzer":
 
 
 # =========================================================
+# 16D. ACADEMIC REPORT GENERATOR (FEATURE 3.14)
+# =========================================================
+
+elif page == "Academic Report Generator":
+
+    render_academic_report_generator(students)
+
+
+# =========================================================
 # 17. RISK ANALYTICS
 # =========================================================
 
@@ -1183,6 +1194,7 @@ elif page == "About Project":
     - AI Recovery Pathway
     - Faculty / Mentor Dashboard
     - Intervention Effectiveness Analyzer
+    - Academic Report Generator
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -1225,6 +1237,7 @@ elif page == "About Project":
     - AI anomaly detection
     - AI recovery pathway
     - Intervention effectiveness analysis
+    - Academic report generation
     - Database integration
     - Role-based login
     - Automated reports

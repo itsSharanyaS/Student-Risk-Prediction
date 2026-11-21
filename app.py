@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from modules.early_warning import render_early_warning
+from modules.personalized_recovery_planner import render_recovery_planner
+from modules.personalized_recovery_planner import render_recovery_planner
 from pathlib import Path
 
 from modules.anomaly_detection import render_anomaly_detection
@@ -293,6 +295,7 @@ role_pages = {
         "Student Clustering", "Anomaly Detection", "AI Recovery Pathway",
         "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
         "Academic Report Generator", "Database Management", "Risk Analytics",
+        "Personalized Recovery Planner",
         "Early Warning Center", "Recovery Plans", "About Project"
     ],
     "Faculty": [
@@ -301,12 +304,14 @@ role_pages = {
         "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
         "AI Recovery Pathway", "Faculty / Mentor Dashboard",
         "Intervention Effectiveness Analyzer", "Academic Report Generator",
+        "Personalized Recovery Planner",
         "Risk Analytics", "Early Warning Center", "Recovery Plans", "About Project"
     ],
     "Mentor": [
         "Dashboard", "Student Risk Trend Analyzer", "AI Recovery Pathway",
         "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
         "Academic Report Generator", "Early Warning Center", "Recovery Plans",
+        "Personalized Recovery Planner",
         "About Project"
     ]
 }

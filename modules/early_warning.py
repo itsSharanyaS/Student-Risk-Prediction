@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 
+
 # =========================================================
 # SMART EARLY WARNING ENGINE
 # =========================================================
@@ -18,160 +19,230 @@ def analyze_student_warnings(df):
         warnings = []
         actions = []
 
-        attendance = student.get("Attendance", 100)
-        marks = student.get("Average Marks", 100)
-        risk = student.get("Risk Score", 0)
+        attendance = pd.to_numeric(
+            student.get("Attendance", 0), errors="coerce"
+        )
 
-        try:
-            attendance = float(attendance)
-        except (ValueError, TypeError):
-            attendance = 100
+        marks = pd.to_numeric(
+            student.get("Marks", 0), errors="coerce"
+        )
 
-        try:
-            marks = float(marks)
-        except (ValueError, TypeError):
-            marks = 100
+        assignments = pd.to_numeric(
+            student.get("Assignments", 0), errors="coerce"
+        )
 
-        try:
-            risk = float(risk)
-        except (ValueError, TypeError):
-            risk = 0
+        risk_score = pd.to_numeric(
+            student.get("Risk Score", 0), errors="coerce"
+        )
 
-        # Attendance warning
-        if attendance < 65:
+        risk_level = student.get("Risk", "Low")
+
+        attendance = 0 if pd.isna(attendance) else attendance
+        marks = 0 if pd.isna(marks) else marks
+        assignments = 0 if pd.isna(assignments) else assignments
+        risk_score = 0 if pd.isna(risk_score) else risk_score
+
+        # 1. Attendance Warning
+        if attendance < 50:
+            warnings.append("Critical Attendance")
+            actions.append("Immediate attendance counselling")
+
+        elif attendance < 65:
             warnings.append("Severe Attendance Shortage")
-            actions.append("Schedule an attendance counselling session")
+            actions.append("Schedule mentor meeting")
 
         elif attendance < 75:
             warnings.append("Low Attendance")
-            actions.append("Monitor attendance and encourage regular classes")
+            actions.append("Monitor attendance weekly")
 
-        # Academic warning
-        if marks < 40:
+        # 2. Marks Warning
+        if marks < 35:
             warnings.append("Critical Academic Performance")
-            actions.append("Provide subject-level academic support")
+            actions.append("Arrange academic remedial support")
 
         elif marks < 50:
             warnings.append("Low Academic Performance")
-            actions.append("Recommend remedial classes")
+            actions.append("Recommend subject-wise tutoring")
 
-        # Risk score warning
-        if risk >= 75:
+        elif marks < 60:
+            warnings.append("Below Average Academic Performance")
+            actions.append("Provide additional practice")
+
+        # 3. Assignment Warning
+        if assignments < 40:
+            warnings.append("Critical Assignment Performance")
+            actions.append("Review pending assignments")
+
+        elif assignments < 60:
+            warnings.append("Low Assignment Performance")
+            actions.append("Monitor assignment completion")
+
+        # 4. Risk Score Warning
+        if risk_score >= 75:
             warnings.append("Critical Risk Score")
-            actions.append("Immediate faculty intervention required")
+            actions.append("Immediate faculty intervention")
 
-        elif risk >= 50:
-            warnings.append("Elevated Risk Score")
+        elif risk_score >= 50:
+            warnings.append("High Risk Score")
             actions.append("Assign mentor monitoring")
 
-        # Combined warning
-        if len(warnings) >= 3:
+        # 5. Overall Risk Warning
+        if risk_level == "Critical":
+            warnings.append("Critical Overall Risk")
+            actions.append("Prepare urgent student recovery plan")
+
+        elif risk_level == "High":
+            warnings.append("High Overall Risk")
+            actions.append("Initiate academic intervention")
+
+        # Ignore students with no warning signals
+        if not warnings:
+            continue
+
+        # Determine priority
+        if risk_level == "Critical" or risk_score >= 75:
             priority = "Critical"
 
-        elif len(warnings) == 2:
+        elif len(warnings) >= 3 or risk_score >= 50:
             priority = "High"
 
-        elif len(warnings) == 1:
-            priority = "Moderate"
-
         else:
-            continue
+            priority = "Moderate"
 
         alerts.append({
             "Student ID": student.get("Student ID", "Unknown"),
-            "Student Name": student.get("Name", "Unknown"),
+            "Student": student.get("Student", "Unknown"),
             "Attendance": attendance,
-            "Average Marks": marks,
-            "Risk Score": risk,
-            "Warnings": " | ".join(warnings),
+            "Marks": marks,
+            "Assignments": assignments,
+            "Risk Score": risk_score,
+            "Risk Level": risk_level,
+            "Warning Signals": ", ".join(warnings),
             "Priority": priority,
-            "Recommended Action": " | ".join(actions)
+            "Recommended Actions": " | ".join(actions)
         })
 
     return pd.DataFrame(alerts)
 
 
 # =========================================================
-# DISPLAY EARLY WARNING ENGINE
+# EARLY WARNING CENTER UI
 # =========================================================
 
 def render_early_warning(df):
 
-    st.header("🚨 Smart Early Warning Engine")
+    st.title("🚨 Smart Early Warning Engine")
+
     st.caption(
-        "Automatically identifies students showing signs of academic deterioration."
+        "Intelligent detection of academic warning signals "
+        "and students requiring early intervention."
     )
 
     alerts_df = analyze_student_warnings(df)
 
     if alerts_df.empty:
-        st.success("No warning signals detected among the current students.")
+        st.success("🎉 No warning signals detected.")
         return
 
-    # Priority metrics
+    # -----------------------------------------------------
+    # ALERT METRICS
+    # -----------------------------------------------------
+
     critical = len(alerts_df[alerts_df["Priority"] == "Critical"])
     high = len(alerts_df[alerts_df["Priority"] == "High"])
     moderate = len(alerts_df[alerts_df["Priority"] == "Moderate"])
 
-    c1, c2, c3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
-    c1.metric("🔴 Critical Alerts", critical)
-    c2.metric("🟠 High Priority", high)
-    c3.metric("🟡 Moderate Alerts", moderate)
+    col1.metric("🚨 Total Alerts", len(alerts_df))
+    col2.metric("🔴 Critical", critical)
+    col3.metric("🟠 High", high)
+    col4.metric("🟡 Moderate", moderate)
 
     st.divider()
 
-    # Filter
+    # -----------------------------------------------------
+    # PRIORITY FILTER
+    # -----------------------------------------------------
+
     priority_filter = st.selectbox(
-        "Filter by Priority",
+        "Filter alerts by priority",
         ["All", "Critical", "High", "Moderate"]
     )
 
-    filtered_df = alerts_df.copy()
+    filtered = alerts_df.copy()
 
     if priority_filter != "All":
-        filtered_df = filtered_df[
-            filtered_df["Priority"] == priority_filter
-        ]
+        filtered = filtered[filtered["Priority"] == priority_filter]
 
-    # Alert table
-    st.subheader("Student Warning Records")
+    # -----------------------------------------------------
+    # ALERT TABLE
+    # -----------------------------------------------------
+
+    st.subheader("📋 Student Alert List")
 
     st.dataframe(
-        filtered_df,
+        filtered[[
+            "Student ID", "Student", "Attendance",
+            "Marks", "Assignments", "Risk Score",
+            "Risk Level", "Priority"
+        ]],
         use_container_width=True,
         hide_index=True
     )
 
     st.divider()
 
-    # Individual alerts
-    st.subheader("Detailed Warning Analysis")
+    # -----------------------------------------------------
+    # INDIVIDUAL ALERT DETAILS
+    # -----------------------------------------------------
 
-    for _, row in filtered_df.iterrows():
+    st.subheader("🔎 Detailed Warning Analysis")
+
+    for _, row in filtered.iterrows():
 
         if row["Priority"] == "Critical":
-            emoji = "🔴"
+            icon = "🔴"
         elif row["Priority"] == "High":
-            emoji = "🟠"
+            icon = "🟠"
         else:
-            emoji = "🟡"
+            icon = "🟡"
 
         with st.expander(
-            f"{emoji} {row['Student Name']} — {row['Priority']} Priority"
+            f"{icon} {row['Student']} — {row['Priority']} Priority"
         ):
 
-            st.write(f"**Student ID:** {row['Student ID']}")
-            st.write(f"**Attendance:** {row['Attendance']}%")
-            st.write(f"**Average Marks:** {row['Average Marks']}")
-            st.write(f"**Risk Score:** {row['Risk Score']}")
+            col1, col2, col3 = st.columns(3)
 
-            st.markdown("### Detected Warning Signals")
+            col1.metric("Attendance", f"{row['Attendance']}%")
+            col2.metric("Marks", f"{row['Marks']}%")
+            col3.metric("Risk Score", row["Risk Score"])
 
-            for warning in row["Warnings"].split(" | "):
+            st.write("**Risk Level:**", row["Risk Level"])
+
+            st.markdown("### ⚠️ Warning Signals")
+
+            for warning in row["Warning Signals"].split(", "):
                 st.warning(warning)
 
-            st.markdown("### Recommended Actions")
+            st.markdown("### 💡 Recommended Actions")
 
-            for action in row["Recommended Action"].split(" | "):
+            for action in row["Recommended Actions"].split(" | "):
                 st.info(action)
+
+    # -----------------------------------------------------
+    # DOWNLOAD ALERT REPORT
+    # -----------------------------------------------------
+
+    st.divider()
+
+    st.subheader("📥 Export Warning Report")
+
+    csv_data = filtered.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        "Download Early Warning Report",
+        data=csv_data,
+        file_name="early_warning_report.csv",
+        mime="text/csv"
+    )

@@ -314,7 +314,7 @@ role_pages = {
 available_pages = role_pages.get(current_role, role_pages["Mentor"])
 
 st.sidebar.markdown(f"### 👤 {current_username}")
-st.sidebar.caption(f"Role: {current_role")
+st.sidebar.caption(f"Role: {current_role}")
 
 if st.sidebar.button("🚪 Logout", use_container_width=True):
     logout_user()

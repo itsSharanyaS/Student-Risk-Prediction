@@ -276,6 +276,7 @@ page = st.sidebar.radio(
         "What-If Simulator",
         "Student Risk Trend Analyzer",
         "Subject-Level Intelligence",
+        "Student Clustering",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -909,12 +910,22 @@ elif page == "Subject-Level Intelligence":
 
     from modules.subject_intelligence import render_subject_intelligence
 
-
     render_subject_intelligence(students)
 
 
 # =========================================================
-# 16. RISK ANALYTICS
+# 16. STUDENT CLUSTERING (FEATURE 3.9)
+# =========================================================
+
+elif page == "Student Clustering":
+
+    from modules.student_clustering import render_student_clustering
+
+    render_student_clustering(students)
+
+
+# =========================================================
+# 17. RISK ANALYTICS
 # =========================================================
 
 elif page == "Risk Analytics":
@@ -1118,6 +1129,7 @@ elif page == "About Project":
     - Academic What-If Simulator
     - Student Risk Trend Analyzer
     - Subject-Level Intelligence
+    - Student Clustering (K-Means)
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center

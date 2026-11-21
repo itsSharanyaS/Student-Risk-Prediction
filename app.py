@@ -287,36 +287,42 @@ average_assignments = students["Assignments"].mean()
 st.sidebar.divider()
 st.sidebar.title("🎓 Student Intelligence")
 st.sidebar.caption("Academic monitoring and risk analysis platform")
-
+    
 role_pages = {
     "Admin": [
-        "Dashboard", "Student Management", "Risk Prediction Center",
-        "Explainable AI", "Risk Forecasting", "What-If Simulator",
-        "Student Risk Trend Analyzer", "Subject-Level Intelligence",
-        "Student Clustering", "Anomaly Detection", "AI Recovery Pathway",
-        "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
-        "Academic Report Generator", "Database Management", "Risk Analytics",
+        "Dashboard",
+        "Student Management",
+        "Risk Prediction Center",
+        "Explainable AI",
+        "Early Warning Center",
         "Personalized Recovery Planner",
         "Recovery Success Tracker",
-        "Early Warning Center", "Recovery Plans", "About Project"
+        "Advanced Analytics",
+        "Reports"
     ],
+
     "Faculty": [
-        "Dashboard", "Risk Prediction Center", "Explainable AI",
-        "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
-        "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
-        "AI Recovery Pathway", "Faculty / Mentor Dashboard",
-        "Intervention Effectiveness Analyzer", "Academic Report Generator",
+        "Dashboard",
+        "Student Management",
+        "Risk Prediction Center",
+        "Explainable AI",
+        "Early Warning Center",
         "Personalized Recovery Planner",
         "Recovery Success Tracker",
-        "Risk Analytics", "Early Warning Center", "Recovery Plans", "About Project"
+        "Advanced Analytics",
+        "Reports"
     ],
+
     "Mentor": [
-        "Dashboard", "Student Risk Trend Analyzer", "AI Recovery Pathway",
-        "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
-        "Academic Report Generator", "Early Warning Center", "Recovery Plans",
+        "Dashboard",
+        "Student Management",
+        "Risk Prediction Center",
+        "Explainable AI",
+        "Early Warning Center",
         "Personalized Recovery Planner",
         "Recovery Success Tracker",
-        "About Project"
+        "Advanced Analytics",
+        "Reports"
     ]
 }
 

@@ -76,7 +76,7 @@ hr {{border-color: {border_color};}}
 
 
 # =========================================================
-# 2A. AUTHENTICATION GATE (FEATURE 3.15)
+# 2A. AUTHENTICATION GATE
 # =========================================================
 
 if not is_authenticated():
@@ -292,8 +292,8 @@ role_pages = {
         "Student Risk Trend Analyzer", "Subject-Level Intelligence",
         "Student Clustering", "Anomaly Detection", "AI Recovery Pathway",
         "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
-        "Academic Report Generator", "Database Management", "Risk Analytics", "Early Warning Center",
-        "Recovery Plans", "About Project"
+        "Academic Report Generator", "Database Management", "Risk Analytics",
+        "Early Warning Center", "Recovery Plans", "About Project"
     ],
     "Faculty": [
         "Dashboard", "Risk Prediction Center", "Explainable AI",
@@ -314,7 +314,8 @@ role_pages = {
 available_pages = role_pages.get(current_role, role_pages["Mentor"])
 
 st.sidebar.markdown(f"### 👤 {current_username}")
-st.sidebar.caption(f"Role: {current_role}")
+st.sidebar.caption(f"Role: {current_role")
+
 if st.sidebar.button("🚪 Logout", use_container_width=True):
     logout_user()
 
@@ -343,11 +344,11 @@ def apply_chart_theme(fig, height=400):
     return fig
 
 
-
 # Defensive role/page access check before rendering any page route.
 if page not in available_pages:
     st.error("You do not have permission to access this page.")
     st.stop()
+
 
 # =========================================================
 # 8. SMART DASHBOARD
@@ -930,7 +931,7 @@ elif page == "What-If Simulator":
 
 
 # =========================================================
-# 14. STUDENT RISK TREND ANALYZER (FEATURE 3.7)
+# 14. STUDENT RISK TREND ANALYZER
 # =========================================================
 
 elif page == "Student Risk Trend Analyzer":
@@ -945,7 +946,7 @@ elif page == "Student Risk Trend Analyzer":
 
 
 # =========================================================
-# 15. SUBJECT-LEVEL INTELLIGENCE (FEATURE 3.8)
+# 15. SUBJECT-LEVEL INTELLIGENCE
 # =========================================================
 
 elif page == "Subject-Level Intelligence":
@@ -956,7 +957,7 @@ elif page == "Subject-Level Intelligence":
 
 
 # =========================================================
-# 16. STUDENT CLUSTERING (FEATURE 3.9)
+# 16. STUDENT CLUSTERING
 # =========================================================
 
 elif page == "Student Clustering":
@@ -967,7 +968,7 @@ elif page == "Student Clustering":
 
 
 # =========================================================
-# 16A. AI ANOMALY DETECTION (FEATURE 3.10)
+# 16A. AI ANOMALY DETECTION
 # =========================================================
 
 elif page == "Anomaly Detection":
@@ -976,11 +977,7 @@ elif page == "Anomaly Detection":
 
 
 # =========================================================
-# 17. RISK ANALYTICS
-# =========================================================
-
-# =========================================================
-# 16B. FACULTY / MENTOR DASHBOARD (FEATURE 3.12)
+# 16B. FACULTY / MENTOR DASHBOARD
 # =========================================================
 
 elif page == "Faculty / Mentor Dashboard":
@@ -989,7 +986,7 @@ elif page == "Faculty / Mentor Dashboard":
 
 
 # =========================================================
-# 16C. INTERVENTION EFFECTIVENESS ANALYZER (FEATURE 3.13)
+# 16C. INTERVENTION EFFECTIVENESS ANALYZER
 # =========================================================
 
 elif page == "Intervention Effectiveness Analyzer":
@@ -998,7 +995,7 @@ elif page == "Intervention Effectiveness Analyzer":
 
 
 # =========================================================
-# 16D. ACADEMIC REPORT GENERATOR (FEATURE 3.14)
+# 16D. ACADEMIC REPORT GENERATOR
 # =========================================================
 
 elif page == "Academic Report Generator":
@@ -1063,54 +1060,12 @@ elif page == "Risk Analytics":
 
 
 # =========================================================
-# 17. EARLY WARNING CENTER
+# 17. SMART EARLY WARNING CENTER
 # =========================================================
 
 elif page == "Early Warning Center":
 
-    st.title("🚨 Early Warning Center")
-    st.caption("Monitor attendance, marks and assignment concerns.")
-
-    attendance_alerts = students[students["Attendance"] < 60]
-    marks_alerts = students[students["Marks"] < 50]
-    assignment_alerts = students[students["Assignments"] < 50]
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric("Attendance Alerts", len(attendance_alerts))
-    col2.metric("Marks Alerts", len(marks_alerts))
-    col3.metric("Assignment Alerts", len(assignment_alerts))
-
-    st.divider()
-    st.subheader("⚠️ Attendance Below 60%")
-
-    st.dataframe(
-        attendance_alerts[[
-            "Student ID", "Student", "Attendance", "Marks", "Risk"
-        ]],
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.subheader("📉 Marks Below 50%")
-
-    st.dataframe(
-        marks_alerts[[
-            "Student ID", "Student", "Marks", "Attendance", "Risk"
-        ]],
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.subheader("📝 Assignment Scores Below 50%")
-
-    st.dataframe(
-        assignment_alerts[[
-            "Student ID", "Student", "Assignments", "Risk"
-        ]],
-        use_container_width=True,
-        hide_index=True
-    )
+    render_early_warning(students)
 
 
 # =========================================================
@@ -1185,7 +1140,7 @@ elif page == "Recovery Plans":
 
 
 # =========================================================
-# 18A. AI RECOVERY PATHWAY (FEATURE 3.11)
+# 18A. AI RECOVERY PATHWAY
 # =========================================================
 
 elif page == "AI Recovery Pathway":
@@ -1194,7 +1149,7 @@ elif page == "AI Recovery Pathway":
 
 
 # =========================================================
-# 19. ABOUT PROJECT
+# 19. DATABASE MANAGEMENT
 # =========================================================
 
 elif page == "Database Management":
@@ -1203,7 +1158,7 @@ elif page == "Database Management":
 
 
 # =========================================================
-# 19. ABOUT PROJECT
+# 20. ABOUT PROJECT
 # =========================================================
 
 elif page == "About Project":
@@ -1237,7 +1192,7 @@ elif page == "About Project":
     - Academic Report Generator
     - Risk analytics
     - Attendance, marks and assignment monitoring
-    - Early warning center
+    - Smart Early Warning Engine
     - Recovery plans
     - CSV data export
     - Light and dark themes
@@ -1265,8 +1220,8 @@ elif page == "About Project":
     - Scikit-learn
 
     ### Advanced AI Features
-    - Faculty / Mentor Dashboard
 
+    - Faculty / Mentor Dashboard
     - Machine learning risk prediction
     - Explainable AI
     - Risk forecasting
@@ -1295,7 +1250,7 @@ elif page == "About Project":
 
 
 # =========================================================
-# 20. FOOTER
+# 21. FOOTER
 # =========================================================
 
 st.sidebar.divider()

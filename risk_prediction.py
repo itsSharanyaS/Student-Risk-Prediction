@@ -13,12 +13,11 @@ from ml_engine import (
 
 
 # =========================================================
-# 1. LOAD MODELS
+# 1. LOAD AND CACHE MACHINE LEARNING MODELS
 # =========================================================
 
 @st.cache_resource
 def load_trained_models():
-
     return train_models()
 
 
@@ -39,14 +38,13 @@ def render_risk_prediction_page(
         "using attendance, marks, and assignment performance."
     )
 
-    # -----------------------------------------------------
+    # =====================================================
     # TRAIN MODELS
-    # -----------------------------------------------------
+    # =====================================================
 
     with st.spinner("Training AI models..."):
 
         try:
-
             trained_models, evaluation_results, training_data = (
                 load_trained_models()
             )
@@ -69,9 +67,11 @@ def render_risk_prediction_page(
 
         return
 
-    # -----------------------------------------------------
+    # =====================================================
     # MODEL SELECTION
-    # -----------------------------------------------------
+    # =====================================================
+
+    st.subheader("Machine Learning Model")
 
     model_names = list(trained_models.keys())
 
@@ -84,9 +84,11 @@ def render_risk_prediction_page(
 
     st.divider()
 
-    # -----------------------------------------------------
+    # =====================================================
     # PREDICTION MODE
-    # -----------------------------------------------------
+    # =====================================================
+
+    st.subheader("Student Information")
 
     prediction_mode = st.radio(
         "Prediction Mode",
@@ -94,9 +96,9 @@ def render_risk_prediction_page(
         horizontal=True
     )
 
-    # -----------------------------------------------------
+    # =====================================================
     # EXISTING STUDENT
-    # -----------------------------------------------------
+    # =====================================================
 
     if prediction_mode == "Existing Student":
 
@@ -104,6 +106,28 @@ def render_risk_prediction_page(
 
             st.warning(
                 "No student records are available."
+            )
+
+            return
+
+        required_student_columns = [
+            "Student ID",
+            "Student",
+            "Attendance",
+            "Marks",
+            "Assignments"
+            ]
+
+        missing_columns = [
+            column for column in required_student_columns
+            if column not in students.columns
+        ]
+
+        if missing_columns:
+
+            st.error(
+                "Student dataset is missing columns: "
+                + ", ".join(missing_columns)
             )
 
             return
@@ -124,15 +148,23 @@ def render_risk_prediction_page(
             == selected_student_id
         ].iloc[0]
 
-        student_name = student_row["Student"]
+        student_name = str(student_row["Student"])
 
-        attendance = float(student_row["Attendance"])
+        attendance = float(
+            student_row["Attendance"]
+        )
 
-        marks = float(student_row["Marks"])
+        marks = float(
+            student_row["Marks"]
+        )
 
-        assignments = float(student_row["Assignments"])
+        assignments = float(
+            student_row["Assignments"]
+        )
 
-        st.markdown(f"### 👤 {student_name}")
+        st.markdown(
+            f"### 👤 {student_name}"
+        )
 
         col1, col2, col3 = st.columns(3)
 
@@ -151,9 +183,9 @@ def render_risk_prediction_page(
             f"{assignments:.1f}%"
         )
 
-    # -----------------------------------------------------
+    # =====================================================
     # MANUAL INPUT
-    # -----------------------------------------------------
+    # =====================================================
 
     else:
 
@@ -163,48 +195,61 @@ def render_risk_prediction_page(
 
         attendance = col1.slider(
             "Attendance (%)",
-            0.0,
-            100.0,
-            75.0
+            min_value=0.0,
+            max_value=100.0,
+            value=75.0,
+            step=1.0
         )
 
         marks = col2.slider(
             "Marks (%)",
-            0.0,
-            100.0,
-            65.0
+            min_value=0.0,
+            max_value=100.0,
+            value=65.0,
+            step=1.0
         )
 
         assignments = col3.slider(
             "Assignments (%)",
-            0.0,
-            100.0,
-            70.0
+            min_value=0.0,
+            max_value=100.0,
+            value=70.0,
+            step=1.0
         )
 
         student_name = "Manual Student"
 
-    # -----------------------------------------------------
+    # =====================================================
     # PREDICTION
-    # -----------------------------------------------------
+    # =====================================================
 
-    predicted_risk, probabilities, high_risk_probability = (
-        predict_student(
-            selected_model,
-            attendance,
-            marks,
-            assignments
+    try:
+
+        predicted_risk, probabilities, high_risk_probability = (
+            predict_student(
+                selected_model,
+                attendance,
+                marks,
+                assignments
+            )
         )
-    )
 
-    # Already returned as percentage from ml_engine.py
-    risk_score = high_risk_probability
+    except Exception as e:
+
+        st.error(
+            f"Student prediction failed: {e}"
+        )
+
+        return
+
+    # Probabilities from ml_engine are already percentages
+    risk_score = float(high_risk_probability)
 
     st.divider()
 
-    # -----------------------------------------------------
+    # =====================================================
     # RESULT DISPLAY
-    # -----------------------------------------------------
+    # =====================================================
 
     st.subheader("Prediction Result")
 
@@ -260,16 +305,18 @@ def render_risk_prediction_page(
 
     st.divider()
 
-    # -----------------------------------------------------
+    # =====================================================
     # PROBABILITY DISTRIBUTION
-    # -----------------------------------------------------
+    # =====================================================
 
     st.subheader("Risk Probability Distribution")
 
-    # Probabilities are already converted to percentages
     probability_data = pd.DataFrame({
         "Risk Level": list(probabilities.keys()),
-        "Probability": list(probabilities.values())
+        "Probability": [
+            float(value)
+            for value in probabilities.values()
+        ]
     })
 
     fig_probability = px.bar(
@@ -287,20 +334,28 @@ def render_risk_prediction_page(
         yaxis_range=[0, 100]
     )
 
-    fig_probability = apply_chart_theme(fig_probability)
+    fig_probability.update_traces(
+        textposition="outside"
+    )
+
+    fig_probability = apply_chart_theme(
+        fig_probability
+    )
 
     st.plotly_chart(
         fig_probability,
         use_container_width=True
     )
 
-    # -----------------------------------------------------
+    # =====================================================
     # MODEL COMPARISON
-    # -----------------------------------------------------
+    # =====================================================
 
     st.divider()
 
-    st.subheader("Machine Learning Model Comparison")
+    st.subheader(
+        "Machine Learning Model Comparison"
+    )
 
     comparison_df = get_model_comparison(
         evaluation_results
@@ -314,28 +369,31 @@ def render_risk_prediction_page(
             hide_index=True
         )
 
-        # Correct function arguments
+        # Correct best-model function usage
         best_model_name, best_model = get_best_model(
             trained_models,
             evaluation_results
         )
 
-        best_f1 = evaluation_results[
-            best_model_name
-        ]["F1 Score"]
+        if best_model_name is not None:
 
-        col1, col2 = st.columns(2)
+            best_f1 = evaluation_results[
+                best_model_name
+            ]["F1 Score"]
 
-        col1.metric(
-            "Best Performing Model",
-            best_model_name
-        )
+            col1, col2 = st.columns(2)
 
-        col2.metric(
-            "Best F1 Score",
-            f"{best_f1:.2f}%"
-        )
+            col1.metric(
+                "Best Performing Model",
+                best_model_name
+            )
 
+            col2.metric(
+                "Best F1 Score",
+                f"{best_f1:.2f}%"
+            )
+
+        # Model comparison chart
         comparison_chart = px.bar(
             comparison_df,
             x="Model",
@@ -347,6 +405,11 @@ def render_risk_prediction_page(
             ],
             barmode="group",
             title="Model Performance Comparison"
+        )
+
+        comparison_chart.update_layout(
+            yaxis_title="Score (%)",
+            yaxis_range=[0, 100]
         )
 
         comparison_chart = apply_chart_theme(
@@ -364,17 +427,29 @@ def render_risk_prediction_page(
             "Model comparison results are unavailable."
         )
 
-    # -----------------------------------------------------
+    # =====================================================
     # FEATURE IMPORTANCE
-    # -----------------------------------------------------
+    # =====================================================
 
     st.divider()
 
-    st.subheader("Academic Feature Importance")
-
-    importance_data = get_feature_importance(
-        selected_model
+    st.subheader(
+        "Academic Feature Importance"
     )
+
+    try:
+
+        importance_data = get_feature_importance(
+            selected_model
+        )
+
+    except Exception as e:
+
+        importance_data = {}
+
+        st.warning(
+            f"Feature importance could not be calculated: {e}"
+        )
 
     if importance_data:
 
@@ -393,7 +468,12 @@ def render_risk_prediction_page(
             x="Importance",
             y="Feature",
             orientation="h",
-            title="Factors Influencing Risk Prediction"
+            title="Factors Influencing Risk Prediction",
+            text="Importance"
+        )
+
+        fig_importance.update_layout(
+            xaxis_title="Importance (%)"
         )
 
         fig_importance = apply_chart_theme(
@@ -411,13 +491,15 @@ def render_risk_prediction_page(
             "Feature importance is not available for this model."
         )
 
-    # -----------------------------------------------------
-    # INTERPRETATION
-    # -----------------------------------------------------
+    # =====================================================
+    # PREDICTION INTERPRETATION
+    # =====================================================
 
     st.divider()
 
-    st.subheader("🧠 Prediction Interpretation")
+    st.subheader(
+        "🧠 Prediction Interpretation"
+    )
 
     st.write(
         f"""
@@ -438,8 +520,83 @@ def render_risk_prediction_page(
         """
     )
 
+    # =====================================================
+    # ACADEMIC RECOMMENDATIONS
+    # =====================================================
+
+    st.divider()
+
+    st.subheader("📌 Suggested Academic Actions")
+
+    if predicted_risk == "Low":
+
+        st.success(
+            "The student is performing well. Continue maintaining "
+            "consistent attendance, marks, and assignment completion."
+        )
+
+        recommendations = [
+            "Maintain regular attendance.",
+            "Continue consistent academic performance.",
+            "Participate in advanced learning activities."
+        ]
+
+    elif predicted_risk == "Moderate":
+
+        st.warning(
+            "The student may benefit from additional academic support."
+        )
+
+        recommendations = [
+            "Improve attendance consistency.",
+            "Revise difficult subjects regularly.",
+            "Complete all pending assignments.",
+            "Monitor academic performance every week."
+        ]
+
+    elif predicted_risk == "High":
+
+        st.warning(
+            "The student requires focused academic monitoring."
+        )
+
+        recommendations = [
+            "Schedule academic mentoring.",
+            "Identify subjects with low marks.",
+            "Improve attendance immediately.",
+            "Create a weekly improvement plan.",
+            "Monitor assignment completion."
+        ]
+
+    else:
+
+        st.error(
+            "The student may require immediate academic intervention."
+        )
+
+        recommendations = [
+            "Arrange an individual mentor meeting.",
+            "Review attendance and academic difficulties.",
+            "Provide additional subject support.",
+            "Create a personalized improvement plan.",
+            "Track progress regularly with faculty support."
+        )
+
+    for recommendation in recommendations:
+
+        st.markdown(
+            f"- {recommendation}"
+        )
+
+    # =====================================================
+    # DISCLAIMER
+    # =====================================================
+
+    st.divider()
+
     st.info(
         "This system currently uses synthetic training data "
         "for demonstration. Predictions are experimental and "
-        "should not be used for actual academic decisions."
+        "should not be used as the sole basis for actual "
+        "academic decisions."
     )

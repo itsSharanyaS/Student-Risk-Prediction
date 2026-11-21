@@ -7,6 +7,7 @@ from pathlib import Path
 
 from modules.anomaly_detection import render_anomaly_detection
 from modules.recovery_pathway import render_recovery_pathway
+from modules.faculty_dashboard import render_faculty_dashboard
 
 # =========================================================
 # 1. PAGE CONFIGURATION
@@ -282,6 +283,7 @@ page = st.sidebar.radio(
         "Student Clustering",
         "Anomaly Detection",
         "AI Recovery Pathway",
+        "Faculty / Mentor Dashboard",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -942,6 +944,19 @@ elif page == "Anomaly Detection":
 # 17. RISK ANALYTICS
 # =========================================================
 
+# =========================================================
+# 16B. FACULTY / MENTOR DASHBOARD (FEATURE 3.12)
+# =========================================================
+
+elif page == "Faculty / Mentor Dashboard":
+
+    render_faculty_dashboard(students)
+
+
+# =========================================================
+# 17. RISK ANALYTICS
+# =========================================================
+
 elif page == "Risk Analytics":
 
     st.title("📊 Academic Risk Analytics")
@@ -1155,6 +1170,7 @@ elif page == "About Project":
     - Student Clustering (K-Means)
     - AI Anomaly Detection (Isolation Forest)
     - AI Recovery Pathway
+    - Faculty / Mentor Dashboard
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -1185,6 +1201,7 @@ elif page == "About Project":
     - Scikit-learn
 
     ### Advanced AI Features
+    - Faculty / Mentor Dashboard
 
     - Machine learning risk prediction
     - Explainable AI

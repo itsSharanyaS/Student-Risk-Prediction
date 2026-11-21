@@ -5,6 +5,9 @@ import numpy as np
 import plotly.express as px
 from pathlib import Path
 
+from modules.anomaly_detection import render_anomaly_detection
+from modules.recovery_pathway import render_recovery_pathway
+
 # =========================================================
 # 1. PAGE CONFIGURATION
 # =========================================================
@@ -277,6 +280,8 @@ page = st.sidebar.radio(
         "Student Risk Trend Analyzer",
         "Subject-Level Intelligence",
         "Student Clustering",
+        "Anomaly Detection",
+        "AI Recovery Pathway",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -925,6 +930,15 @@ elif page == "Student Clustering":
 
 
 # =========================================================
+# 16A. AI ANOMALY DETECTION (FEATURE 3.10)
+# =========================================================
+
+elif page == "Anomaly Detection":
+
+    render_anomaly_detection(students)
+
+
+# =========================================================
 # 17. RISK ANALYTICS
 # =========================================================
 
@@ -1103,6 +1117,15 @@ elif page == "Recovery Plans":
 
 
 # =========================================================
+# 18A. AI RECOVERY PATHWAY (FEATURE 3.11)
+# =========================================================
+
+elif page == "AI Recovery Pathway":
+
+    render_recovery_pathway(students)
+
+
+# =========================================================
 # 19. ABOUT PROJECT
 # =========================================================
 
@@ -1130,6 +1153,8 @@ elif page == "About Project":
     - Student Risk Trend Analyzer
     - Subject-Level Intelligence
     - Student Clustering (K-Means)
+    - AI Anomaly Detection (Isolation Forest)
+    - AI Recovery Pathway
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center
@@ -1168,6 +1193,8 @@ elif page == "About Project":
     - Student Risk Trend Analyzer
     - Subject-Level Intelligence
     - Student clustering
+    - AI anomaly detection
+    - AI recovery pathway
     - Intervention effectiveness analysis
     - Database integration
     - Role-based login

@@ -8,6 +8,7 @@ from pathlib import Path
 from modules.anomaly_detection import render_anomaly_detection
 from modules.recovery_pathway import render_recovery_pathway
 from modules.faculty_dashboard import render_faculty_dashboard
+from modules.intervention_effectiveness import render_intervention_effectiveness
 
 # =========================================================
 # 1. PAGE CONFIGURATION
@@ -284,6 +285,7 @@ page = st.sidebar.radio(
         "Anomaly Detection",
         "AI Recovery Pathway",
         "Faculty / Mentor Dashboard",
+        "Intervention Effectiveness Analyzer",
         "Risk Analytics",
         "Early Warning Center",
         "Recovery Plans",
@@ -954,6 +956,15 @@ elif page == "Faculty / Mentor Dashboard":
 
 
 # =========================================================
+# 16C. INTERVENTION EFFECTIVENESS ANALYZER (FEATURE 3.13)
+# =========================================================
+
+elif page == "Intervention Effectiveness Analyzer":
+
+    render_intervention_effectiveness(students)
+
+
+# =========================================================
 # 17. RISK ANALYTICS
 # =========================================================
 
@@ -1171,6 +1182,7 @@ elif page == "About Project":
     - AI Anomaly Detection (Isolation Forest)
     - AI Recovery Pathway
     - Faculty / Mentor Dashboard
+    - Intervention Effectiveness Analyzer
     - Risk analytics
     - Attendance, marks and assignment monitoring
     - Early warning center

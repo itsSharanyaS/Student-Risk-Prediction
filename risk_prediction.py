@@ -53,9 +53,7 @@ def render_risk_prediction_page(
 
         except Exception as e:
 
-            st.error(
-                f"Model training failed: {e}"
-            )
+            st.error(f"Model training failed: {e}")
 
             st.info(
                 "Please check ml_engine.py and the training data."
@@ -75,18 +73,14 @@ def render_risk_prediction_page(
     # MODEL SELECTION
     # -----------------------------------------------------
 
-    model_names = list(
-        trained_models.keys()
-    )
+    model_names = list(trained_models.keys())
 
     selected_model_name = st.selectbox(
         "Select Machine Learning Model",
         model_names
     )
 
-    selected_model = trained_models[
-        selected_model_name
-    ]
+    selected_model = trained_models[selected_model_name]
 
     st.divider()
 
@@ -100,9 +94,13 @@ def render_risk_prediction_page(
         horizontal=True
     )
 
+    # -----------------------------------------------------
+    # EXISTING STUDENT
+    # -----------------------------------------------------
+
     if prediction_mode == "Existing Student":
 
-        if students.empty:
+        if students is None or students.empty:
 
             st.warning(
                 "No student records are available."
@@ -114,7 +112,7 @@ def render_risk_prediction_page(
             students["Student ID"]
             .astype(str)
             .tolist()
-        )
+            )
 
         selected_student_id = st.selectbox(
             "Select Student USN",
@@ -128,21 +126,13 @@ def render_risk_prediction_page(
 
         student_name = student_row["Student"]
 
-        attendance = float(
-            student_row["Attendance"]
-        )
+        attendance = float(student_row["Attendance"])
 
-        marks = float(
-            student_row["Marks"]
-        )
+        marks = float(student_row["Marks"])
 
-        assignments = float(
-            student_row["Assignments"]
-        )
+        assignments = float(student_row["Assignments"])
 
-        st.markdown(
-            f"### 👤 {student_name}"
-        )
+        st.markdown(f"### 👤 {student_name}")
 
         col1, col2, col3 = st.columns(3)
 
@@ -160,6 +150,10 @@ def render_risk_prediction_page(
             "Assignments",
             f"{assignments:.1f}%"
         )
+
+    # -----------------------------------------------------
+    # MANUAL INPUT
+    # -----------------------------------------------------
 
     else:
 
@@ -203,7 +197,8 @@ def render_risk_prediction_page(
         )
     )
 
-    risk_score = high_risk_probability * 100
+    # Already returned as percentage from ml_engine.py
+    risk_score = high_risk_probability
 
     st.divider()
 
@@ -271,17 +266,10 @@ def render_risk_prediction_page(
 
     st.subheader("Risk Probability Distribution")
 
+    # Probabilities are already converted to percentages
     probability_data = pd.DataFrame({
-
-        "Risk Level": list(
-            probabilities.keys()
-        ),
-
-        "Probability": [
-            float(value) * 100
-            for value in probabilities.values()
-        ]
-
+        "Risk Level": list(probabilities.keys()),
+        "Probability": list(probabilities.values())
     })
 
     fig_probability = px.bar(
@@ -299,9 +287,7 @@ def render_risk_prediction_page(
         yaxis_range=[0, 100]
     )
 
-    fig_probability = apply_chart_theme(
-        fig_probability
-    )
+    fig_probability = apply_chart_theme(fig_probability)
 
     st.plotly_chart(
         fig_probability,
@@ -314,9 +300,7 @@ def render_risk_prediction_page(
 
     st.divider()
 
-    st.subheader(
-        "Machine Learning Model Comparison"
-    )
+    st.subheader("Machine Learning Model Comparison")
 
     comparison_df = get_model_comparison(
         evaluation_results
@@ -330,9 +314,15 @@ def render_risk_prediction_page(
             hide_index=True
         )
 
-        best_model_name, best_f1 = get_best_model(
+        # Correct function arguments
+        best_model_name, best_model = get_best_model(
+            trained_models,
             evaluation_results
         )
+
+        best_f1 = evaluation_results[
+            best_model_name
+        ]["F1 Score"]
 
         col1, col2 = st.columns(2)
 
@@ -343,7 +333,7 @@ def render_risk_prediction_page(
 
         col2.metric(
             "Best F1 Score",
-            f"{best_f1 * 100:.2f}%"
+            f"{best_f1:.2f}%"
         )
 
         comparison_chart = px.bar(
@@ -380,9 +370,7 @@ def render_risk_prediction_page(
 
     st.divider()
 
-    st.subheader(
-        "Academic Feature Importance"
-    )
+    st.subheader("Academic Feature Importance")
 
     importance_data = get_feature_importance(
         selected_model
@@ -429,9 +417,7 @@ def render_risk_prediction_page(
 
     st.divider()
 
-    st.subheader(
-        "🧠 Prediction Interpretation"
-    )
+    st.subheader("🧠 Prediction Interpretation")
 
     st.write(
         f"""

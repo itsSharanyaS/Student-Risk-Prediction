@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from modules.early_warning import render_early_warning
 from pathlib import Path
 
 from modules.anomaly_detection import render_anomaly_detection

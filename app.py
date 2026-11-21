@@ -297,6 +297,7 @@ role_pages = {
         "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
         "Academic Report Generator", "Database Management", "Risk Analytics",
         "Personalized Recovery Planner",
+        "Recovery Success Tracker",
         "Early Warning Center", "Recovery Plans", "About Project"
     ],
     "Faculty": [
@@ -306,6 +307,7 @@ role_pages = {
         "AI Recovery Pathway", "Faculty / Mentor Dashboard",
         "Intervention Effectiveness Analyzer", "Academic Report Generator",
         "Personalized Recovery Planner",
+        "Recovery Success Tracker",
         "Risk Analytics", "Early Warning Center", "Recovery Plans", "About Project"
     ],
     "Mentor": [
@@ -313,6 +315,7 @@ role_pages = {
         "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
         "Academic Report Generator", "Early Warning Center", "Recovery Plans",
         "Personalized Recovery Planner",
+        "Recovery Success Tracker",
         "About Project"
     ]
 }

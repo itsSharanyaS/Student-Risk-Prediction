@@ -96,24 +96,28 @@ def prepare_data(df=None):
         .str.title()
     )
 
-    df = df[df["Risk Level"].isin(RISK_LEVELS)]
+    df = df[df["Risk Level"].isin(RISK_LEVELS)].copy()
 
     for column in FEATURE_COLUMNS:
         df[column] = pd.to_numeric(
-            df[column], errors="coerce"
+            df[column],
+            errors="coerce"
         )
 
     X = df[FEATURE_COLUMNS].copy()
     y = df["Risk Level"].copy()
 
-    # Remove rows with no usable feature values
+    # Remove rows with all features missing
     valid_rows = X.notna().any(axis=1)
 
     X = X.loc[valid_rows].reset_index(drop=True)
     y = y.loc[valid_rows].reset_index(drop=True)
 
-    # Fallback when real data is insufficient
-    if len(X) == 0 or y.nunique() < 2:
+    # Use fallback data if dataset is unsuitable
+    counts = y.value_counts()
+
+    if len(counts) < 2 or counts.min() < 2:
+
         fallback = generate_training_data(1200)
 
         X = fallback[FEATURE_COLUMNS].copy()
@@ -123,50 +127,51 @@ def prepare_data(df=None):
 
 
 # ==========================================================
-# SAFE TRAINING / TEST SPLIT
+# SAFE TRAIN / TEST SPLIT
 # ==========================================================
 
 def _safe_training_split(X, y):
 
+    X = X.copy().reset_index(drop=True)
+    y = y.copy().reset_index(drop=True)
+
     counts = y.value_counts()
 
+    # Remove categories having fewer than 2 samples
     valid_classes = counts[counts >= 2].index
 
-    keep = y.isin(valid_classes)
+    valid_rows = y.isin(valid_classes)
 
-    X = X.loc[keep].reset_index(drop=True)
-    y = y.loc[keep].reset_index(drop=True)
+    X = X.loc[valid_rows].reset_index(drop=True)
+    y = y.loc[valid_rows].reset_index(drop=True)
 
-    # Fallback for insufficient classes
-    if y.nunique() < 2 or y.value_counts().min() < 2:
+    counts = y.value_counts()
+
+    # Ensure every class has enough samples for splitting
+    if len(counts) < 2 or counts.min() < 2:
 
         fallback = generate_training_data(1200)
 
         X = fallback[FEATURE_COLUMNS].copy()
         y = fallback["Risk Level"].copy()
 
-    # Safe stratification
-    class_counts = y.value_counts()
+    # Safely determine test size for stratified split
+    test_size = max(
+        len(y) * 0.25,
+        y.nunique()
+    )
 
-    if (
-        y.nunique() >= 2
-        and class_counts.min() >= 2
-        and int(len(y) * 0.25) >= y.nunique()
-    ):
+    test_size = int(np.ceil(test_size))
 
-        return train_test_split(
-            X,
-            y,
-            test_size=0.25,
-            random_state=42,
-            stratify=y
-        )
+    if test_size >= len(y):
+        test_size = max(y.nunique(), int(len(y) * 0.25))
 
     return train_test_split(
         X,
         y,
-        test_size=0.25,
-        random_state=42
+        test_size=test_size,
+        random_state=42,
+        stratify=y
     )
 
 
@@ -270,7 +275,6 @@ def train_models(df=None):
             )
         }
 
-    # Always return exactly 3 items
     return trained_models, evaluation_results, X
 
 
@@ -298,10 +302,6 @@ def predict_student(model, attendance, marks, assignments):
 
         classes = model.classes_
 
-        # Pipeline models expose their classes through the final estimator
-        if isinstance(model, Pipeline):
-            classes = model.named_steps["classifier"].classes_
-
         for risk, probability in zip(classes, raw_probabilities):
 
             probabilities[risk] = round(
@@ -318,7 +318,6 @@ def predict_student(model, attendance, marks, assignments):
         2
     )
 
-    # Returns probabilities in percentage format (0-100)
     return predicted_risk, probabilities, high_risk_probability
 
 
@@ -359,10 +358,7 @@ def get_best_model(trained_models, evaluation_results):
         key=lambda name: evaluation_results[name]["Accuracy"]
     )
 
-    best_model = trained_models.get(best_name)
-
-    # Returns (model name, actual model object)
-    return best_name, best_model
+    return best_name, trained_models.get(best_name)
 
 
 # ==========================================================
@@ -384,7 +380,7 @@ def get_feature_importance(model):
         for feature, value in zip(FEATURE_COLUMNS, values):
             importance[feature] = float(value)
 
-    # Logistic Regression Pipeline
+    # Logistic Regression pipeline
     elif isinstance(model, Pipeline):
 
         classifier = model.named_steps.get("classifier")
@@ -401,15 +397,26 @@ def get_feature_importance(model):
     if total > 0:
 
         importance = {
-            feature: round((value / total) * 100, 2)
+            feature: round(
+                (value / total) * 100, 2
+            )
             for feature, value in importance.items()
         }
 
     return importance
 
 
-# Compatibility alias
+# ==========================================================
+# COMPATIBILITY ALIASES
+# ==========================================================
+
+# Supports pages using the plural function name
 def get_feature_importances(model):
+    return get_feature_importance(model)
+
+
+# Supports older pages using an alternate name
+def calculate_feature_importance(model):
     return get_feature_importance(model)
 
 

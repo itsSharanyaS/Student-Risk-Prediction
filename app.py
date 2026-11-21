@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from modules.early_warning import render_early_warning
+from modules.recovery_success_tracker import render_recovery_success_tracker
 from modules.personalized_recovery_planner import render_recovery_planner
 from modules.personalized_recovery_planner import render_recovery_planner
 from pathlib import Path

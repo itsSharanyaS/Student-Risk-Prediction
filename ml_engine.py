@@ -42,46 +42,80 @@ RISK_LEVELS = [
 
 def generate_training_data(size=1200):
 
+    import numpy as np
+    import pandas as pd
+
     np.random.seed(42)
 
-    attendance = np.random.uniform(35, 100, size)
-    marks = np.random.uniform(25, 100, size)
-    assignments = np.random.uniform(30, 100, size)
+    per_class = size // 4
 
-    # Academic risk score
-    risk_score = (
-        (100 - attendance) * 0.45 +
-        (100 - marks) * 0.35 +
-        (100 - assignments) * 0.20
-    )
+    # =========================
+    # LOW RISK STUDENTS
+    # =========================
+    low_attendance = np.random.uniform(80, 100, per_class)
+    low_marks = np.random.uniform(70, 100, per_class)
+    low_assignments = np.random.uniform(75, 100, per_class)
 
-    # Small random variation
-    risk_score += np.random.normal(0, 4, size)
+    # =========================
+    # MODERATE RISK STUDENTS
+    # =========================
+    moderate_attendance = np.random.uniform(65, 85, per_class)
+    moderate_marks = np.random.uniform(50, 75, per_class)
+    moderate_assignments = np.random.uniform(55, 80, per_class)
 
-    risk_level = []
+    # =========================
+    # HIGH RISK STUDENTS
+    # =========================
+    high_attendance = np.random.uniform(45, 70, per_class)
+    high_marks = np.random.uniform(35, 60, per_class)
+    high_assignments = np.random.uniform(40, 65, per_class)
 
-    for score in risk_score:
+    # =========================
+    # CRITICAL RISK STUDENTS
+    # =========================
+    critical_attendance = np.random.uniform(20, 50, per_class)
+    critical_marks = np.random.uniform(15, 40, per_class)
+    critical_assignments = np.random.uniform(20, 45, per_class)
 
-        if score < 30:
-            risk_level.append("Low")
-
-        elif score < 48:
-            risk_level.append("Moderate")
-
-        elif score < 68:
-            risk_level.append("High")
-
-        else:
-            risk_level.append("Critical")
-
+    # =========================
+    # COMBINE DATA
+    # =========================
     data = pd.DataFrame({
 
-        "Attendance": attendance,
-        "Marks": marks,
-        "Assignments": assignments,
-        "Risk Level": risk_level
+        "Attendance": np.concatenate([
+            low_attendance,
+            moderate_attendance,
+            high_attendance,
+            critical_attendance
+        ]),
 
+        "Marks": np.concatenate([
+            low_marks,
+            moderate_marks,
+            high_marks,
+            critical_marks
+        ]),
+
+        "Assignments": np.concatenate([
+            low_assignments,
+            moderate_assignments,
+            high_assignments,
+            critical_assignments
+        ]),
+
+        "Risk Level": (
+            ["Low"] * per_class +
+            ["Moderate"] * per_class +
+            ["High"] * per_class +
+            ["Critical"] * per_class
+        )
     })
+
+    # Shuffle students
+    data = data.sample(
+        frac=1,
+        random_state=42
+    ).reset_index(drop=True)
 
     return data
 

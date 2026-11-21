@@ -15,7 +15,6 @@ from sklearn.metrics import (
     f1_score
 )
 
-
 # ==========================================================
 # CONFIGURATION
 # ==========================================================
@@ -33,7 +32,6 @@ def generate_training_data(size=1200):
 
     np.random.seed(42)
 
-    # Ensure the dataset is divisible into four classes
     size = max(400, int(size))
     per_class = size // 4
 
@@ -74,7 +72,6 @@ def generate_training_data(size=1200):
 
 def prepare_data(df=None):
 
-    # Use synthetic data if no valid labelled dataset is supplied
     if df is None or "Risk Level" not in df.columns:
         df = generate_training_data(1200)
 
@@ -100,7 +97,6 @@ def prepare_data(df=None):
     )
 
     df = df[df["Risk Level"].isin(RISK_LEVELS)]
-    df = df.dropna(subset=["Risk Level"])
 
     for column in FEATURE_COLUMNS:
         df[column] = pd.to_numeric(
@@ -110,15 +106,16 @@ def prepare_data(df=None):
     X = df[FEATURE_COLUMNS].copy()
     y = df["Risk Level"].copy()
 
-    # Keep rows that have at least one usable feature
+    # Remove rows with no usable feature values
     valid_rows = X.notna().any(axis=1)
 
-    X = X.loc[valid_rows]
-    y = y.loc[valid_rows]
+    X = X.loc[valid_rows].reset_index(drop=True)
+    y = y.loc[valid_rows].reset_index(drop=True)
 
+    # Fallback when real data is insufficient
     if len(X) == 0 or y.nunique() < 2:
-        # If the supplied dataset is unsuitable, use balanced synthetic data
         fallback = generate_training_data(1200)
+
         X = fallback[FEATURE_COLUMNS].copy()
         y = fallback["Risk Level"].copy()
 
@@ -126,35 +123,50 @@ def prepare_data(df=None):
 
 
 # ==========================================================
-# TRAINING HELPER
+# SAFE TRAINING / TEST SPLIT
 # ==========================================================
 
 def _safe_training_split(X, y):
 
     counts = y.value_counts()
 
-    # Remove classes with fewer than two samples
     valid_classes = counts[counts >= 2].index
 
     keep = y.isin(valid_classes)
 
-    X = X.loc[keep]
-    y = y.loc[keep]
+    X = X.loc[keep].reset_index(drop=True)
+    y = y.loc[keep].reset_index(drop=True)
 
-    # If data is unsuitable, use our balanced fallback dataset
+    # Fallback for insufficient classes
     if y.nunique() < 2 or y.value_counts().min() < 2:
 
         fallback = generate_training_data(1200)
 
-        X = fallback[FEATURE_COLUMNS]
-        y = fallback["Risk Level"]
+        X = fallback[FEATURE_COLUMNS].copy()
+        y = fallback["Risk Level"].copy()
+
+    # Safe stratification
+    class_counts = y.value_counts()
+
+    if (
+        y.nunique() >= 2
+        and class_counts.min() >= 2
+        and int(len(y) * 0.25) >= y.nunique()
+    ):
+
+        return train_test_split(
+            X,
+            y,
+            test_size=0.25,
+            random_state=42,
+            stratify=y
+        )
 
     return train_test_split(
         X,
         y,
         test_size=0.25,
-        random_state=42,
-        stratify=y
+        random_state=42
     )
 
 
@@ -171,9 +183,9 @@ def train_models(df=None):
     trained_models = {}
     evaluation_results = {}
 
-    # --------------------------
+    # ------------------------------------------------------
     # RANDOM FOREST
-    # --------------------------
+    # ------------------------------------------------------
 
     random_forest = RandomForestClassifier(
         n_estimators=250,
@@ -187,9 +199,9 @@ def train_models(df=None):
 
     trained_models["Random Forest"] = random_forest
 
-    # --------------------------
+    # ------------------------------------------------------
     # GRADIENT BOOSTING
-    # --------------------------
+    # ------------------------------------------------------
 
     gradient_boosting = GradientBoostingClassifier(
         n_estimators=150,
@@ -202,9 +214,9 @@ def train_models(df=None):
 
     trained_models["Gradient Boosting"] = gradient_boosting
 
-    # --------------------------
+    # ------------------------------------------------------
     # LOGISTIC REGRESSION
-    # --------------------------
+    # ------------------------------------------------------
 
     logistic_regression = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
@@ -220,9 +232,9 @@ def train_models(df=None):
 
     trained_models["Logistic Regression"] = logistic_regression
 
-    # --------------------------
-    # EVALUATION
-    # --------------------------
+    # ------------------------------------------------------
+    # MODEL EVALUATION
+    # ------------------------------------------------------
 
     for name, model in trained_models.items():
 
@@ -234,33 +246,36 @@ def train_models(df=None):
             ),
             "Precision": round(
                 precision_score(
-                    y_test, predictions,
+                    y_test,
+                    predictions,
                     average="weighted",
                     zero_division=0
                 ) * 100, 2
             ),
             "Recall": round(
                 recall_score(
-                    y_test, predictions,
+                    y_test,
+                    predictions,
                     average="weighted",
                     zero_division=0
                 ) * 100, 2
             ),
             "F1 Score": round(
                 f1_score(
-                    y_test, predictions,
+                    y_test,
+                    predictions,
                     average="weighted",
                     zero_division=0
                 ) * 100, 2
             )
         }
 
-    # IMPORTANT: Return exactly 3 items
+    # Always return exactly 3 items
     return trained_models, evaluation_results, X
 
 
 # ==========================================================
-# PREDICT STUDENT RISK
+# STUDENT RISK PREDICTION
 # ==========================================================
 
 def predict_student(model, attendance, marks, assignments):
@@ -279,11 +294,15 @@ def predict_student(model, attendance, marks, assignments):
 
     if hasattr(model, "predict_proba"):
 
-        raw = model.predict_proba(student)[0]
+        raw_probabilities = model.predict_proba(student)[0]
 
         classes = model.classes_
 
-        for risk, probability in zip(classes, raw):
+        # Pipeline models expose their classes through the final estimator
+        if isinstance(model, Pipeline):
+            classes = model.named_steps["classifier"].classes_
+
+        for risk, probability in zip(classes, raw_probabilities):
 
             probabilities[risk] = round(
                 float(probability) * 100, 2
@@ -299,6 +318,7 @@ def predict_student(model, attendance, marks, assignments):
         2
     )
 
+    # Returns probabilities in percentage format (0-100)
     return predicted_risk, probabilities, high_risk_probability
 
 
@@ -311,7 +331,9 @@ def get_model_comparison(evaluation_results):
     if not evaluation_results:
         return pd.DataFrame()
 
-    comparison = pd.DataFrame(evaluation_results).T
+    comparison = pd.DataFrame(
+        evaluation_results
+    ).T
 
     comparison.index.name = "Model"
 
@@ -337,7 +359,10 @@ def get_best_model(trained_models, evaluation_results):
         key=lambda name: evaluation_results[name]["Accuracy"]
     )
 
-    return best_name, trained_models.get(best_name)
+    best_model = trained_models.get(best_name)
+
+    # Returns (model name, actual model object)
+    return best_name, best_model
 
 
 # ==========================================================
@@ -348,7 +373,10 @@ def get_feature_importance(model):
 
     importance = {}
 
-    # Tree models
+    if model is None:
+        return importance
+
+    # Tree-based models
     if hasattr(model, "feature_importances_"):
 
         values = model.feature_importances_
@@ -380,8 +408,8 @@ def get_feature_importance(model):
     return importance
 
 
-# Alias for compatibility with pages using a different function name
-def get_feature_importance(model):
+# Compatibility alias
+def get_feature_importances(model):
     return get_feature_importance(model)
 
 
@@ -398,46 +426,3 @@ def get_training_data_summary(df=None):
         "Total Students": int(len(df)),
         "Risk Distribution": df["Risk Level"].value_counts().to_dict()
     }
-
-# ==========================================================
-# FEATURE IMPORTANCE
-# ==========================================================
-
-def get_feature_importance(model):
-
-    importance = {}
-
-    # Tree-based models
-    if hasattr(model, "feature_importances_"):
-
-        values = model.feature_importances_
-
-        for feature, value in zip(FEATURE_COLUMNS, values):
-            importance[feature] = float(value)
-
-    # Logistic Regression
-    elif isinstance(model, Pipeline):
-
-        classifier = model.named_steps.get("classifier")
-
-        if classifier is not None and hasattr(classifier, "coef_"):
-
-            values = np.abs(classifier.coef_).mean(axis=0)
-
-            for feature, value in zip(FEATURE_COLUMNS, values):
-                importance[feature] = float(value)
-
-    total = sum(importance.values())
-
-    if total > 0:
-        importance = {
-            feature: round((value / total) * 100, 2)
-            for feature, value in importance.items()
-        }
-
-    return importance
-
-
-# Compatibility with pages using plural function naming
-def get_feature_importances(model):
-    return get_feature_importance(model)

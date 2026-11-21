@@ -1,25 +1,18 @@
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
-
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
-
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score
-)
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
 # =========================================================
-# 1. FEATURES
+# 1. CONFIGURATION
 # =========================================================
 
 FEATURE_COLUMNS = [
@@ -37,49 +30,46 @@ RISK_LEVELS = [
 
 
 # =========================================================
-# 2. GENERATE SYNTHETIC TRAINING DATA
+# 2. GENERATE BALANCED TRAINING DATA
 # =========================================================
 
 def generate_training_data(size=1200):
-
-    import numpy as np
-    import pandas as pd
 
     np.random.seed(42)
 
     per_class = size // 4
 
-    # =========================
-    # LOW RISK STUDENTS
-    # =========================
-    low_attendance = np.random.uniform(80, 100, per_class)
-    low_marks = np.random.uniform(70, 100, per_class)
-    low_assignments = np.random.uniform(75, 100, per_class)
+    # -------------------------
+    # LOW RISK
+    # -------------------------
+    low_attendance = np.random.uniform(85, 100, per_class)
+    low_marks = np.random.uniform(75, 100, per_class)
+    low_assignments = np.random.uniform(80, 100, per_class)
 
-    # =========================
-    # MODERATE RISK STUDENTS
-    # =========================
-    moderate_attendance = np.random.uniform(65, 85, per_class)
+    # -------------------------
+    # MODERATE RISK
+    # -------------------------
+    moderate_attendance = np.random.uniform(65, 90, per_class)
     moderate_marks = np.random.uniform(50, 75, per_class)
     moderate_assignments = np.random.uniform(55, 80, per_class)
 
-    # =========================
-    # HIGH RISK STUDENTS
-    # =========================
-    high_attendance = np.random.uniform(45, 70, per_class)
-    high_marks = np.random.uniform(35, 60, per_class)
-    high_assignments = np.random.uniform(40, 65, per_class)
+    # -------------------------
+    # HIGH RISK
+    # -------------------------
+    high_attendance = np.random.uniform(40, 70, per_class)
+    high_marks = np.random.uniform(30, 60, per_class)
+    high_assignments = np.random.uniform(35, 65, per_class)
 
-    # =========================
-    # CRITICAL RISK STUDENTS
-    # =========================
-    critical_attendance = np.random.uniform(20, 50, per_class)
-    critical_marks = np.random.uniform(15, 40, per_class)
-    critical_assignments = np.random.uniform(20, 45, per_class)
+    # -------------------------
+    # CRITICAL RISK
+    # -------------------------
+    critical_attendance = np.random.uniform(15, 45, per_class)
+    critical_marks = np.random.uniform(10, 40, per_class)
+    critical_assignments = np.random.uniform(15, 45, per_class)
 
-    # =========================
-    # COMBINE DATA
-    # =========================
+    # -------------------------
+    # CREATE DATASET
+    # -------------------------
     data = pd.DataFrame({
 
         "Attendance": np.concatenate([
@@ -111,7 +101,7 @@ def generate_training_data(size=1200):
         )
     })
 
-    # Shuffle students
+    # Shuffle data
     data = data.sample(
         frac=1,
         random_state=42
@@ -129,13 +119,13 @@ def prepare_data(df=None):
     if df is None:
         df = generate_training_data()
 
-    data = df.copy()
+    df = df.copy()
 
     required_columns = FEATURE_COLUMNS + ["Risk Level"]
 
     missing_columns = [
         col for col in required_columns
-        if col not in data.columns
+        if col not in df.columns
     ]
 
     if missing_columns:
@@ -143,30 +133,33 @@ def prepare_data(df=None):
             f"Missing required columns: {missing_columns}"
         )
 
-    data = data[required_columns].copy()
+    # Remove rows with missing target labels
+    df = df.dropna(subset=["Risk Level"])
 
-    data["Risk Level"] = data["Risk Level"].astype(str)
+    # Clean risk labels
+    df["Risk Level"] = (
+        df["Risk Level"]
+        .astype(str)
+        .str.strip()
+        .str.title()
+    )
 
-    data = data.dropna()
+    # Keep only valid risk levels
+    df = df[df["Risk Level"].isin(RISK_LEVELS)]
 
-    X = data[FEATURE_COLUMNS].astype(float)
+    # Convert features to numeric
+    for column in FEATURE_COLUMNS:
+        df[column] = pd.to_numeric(
+            df[column],
+            errors="coerce"
+        )
 
-    y = data["Risk Level"]
+    X = df[FEATURE_COLUMNS].copy()
+    y = df["Risk Level"].copy()
 
-    return X, y
-
-
-# =========================================================
-# 4. TRAIN MODELS
-# =========================================================
-
-def train_models(df=None):
-
-    X, y = prepare_data(df)
-
-    if len(X) < 20:
+    if len(X) == 0:
         raise ValueError(
-            "At least 20 records are required for model training."
+            "Training dataset is empty."
         )
 
     if y.nunique() < 2:
@@ -174,6 +167,41 @@ def train_models(df=None):
             "At least two risk categories are required."
         )
 
+    # Remove rows where every feature is missing
+    valid_rows = X.notna().any(axis=1)
+
+    X = X.loc[valid_rows]
+    y = y.loc[valid_rows]
+
+    return X, y
+
+
+# =========================================================
+# 4. TRAIN MACHINE LEARNING MODELS
+# =========================================================
+
+def train_models(df=None):
+
+    X, y = prepare_data(df)
+
+    # Check category counts
+    class_counts = y.value_counts()
+
+    # Remove classes with fewer than 2 samples
+    valid_classes = class_counts[class_counts >= 2].index
+
+    valid_rows = y.isin(valid_classes)
+
+    X = X.loc[valid_rows]
+    y = y.loc[valid_rows]
+
+    if y.nunique() < 2:
+        raise ValueError(
+            "Training requires at least two risk categories "
+            "with two or more samples each."
+        )
+
+    # Safe stratified splitting
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -182,93 +210,120 @@ def train_models(df=None):
         stratify=y
     )
 
-    models = {
-
-        "Random Forest": RandomForestClassifier(
-            n_estimators=150,
-            max_depth=8,
-            random_state=42,
-            class_weight="balanced"
-        ),
-
-        "Gradient Boosting": GradientBoostingClassifier(
-            n_estimators=100,
-            learning_rate=0.1,
-            max_depth=3,
-            random_state=42
-        ),
-
-        "Logistic Regression": Pipeline([
-
-            ("imputer", SimpleImputer(
-                strategy="median"
-            )),
-
-            ("scaler", StandardScaler()),
-
-            ("model", LogisticRegression(
-                max_iter=1500,
-                class_weight="balanced"
-            ))
-
-        ])
-    }
-
     trained_models = {}
+
     evaluation_results = {}
 
-    for model_name, model in models.items():
+    # =====================================================
+    # RANDOM FOREST
+    # =====================================================
 
-        try:
+    random_forest = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=8,
+        min_samples_split=4,
+        random_state=42,
+        class_weight="balanced"
+    )
 
-            model.fit(X_train, y_train)
+    random_forest.fit(
+        X_train,
+        y_train
+    )
 
-            predictions = model.predict(X_test)
+    trained_models["Random Forest"] = random_forest
 
-            trained_models[model_name] = model
+    # =====================================================
+    # GRADIENT BOOSTING
+    # =====================================================
 
-            evaluation_results[model_name] = {
+    gradient_boosting = GradientBoostingClassifier(
+        n_estimators=100,
+        learning_rate=0.08,
+        max_depth=3,
+        random_state=42
+    )
 
-                "Accuracy": accuracy_score(
-                    y_test,
-                    predictions
-                ),
+    gradient_boosting.fit(
+        X_train,
+        y_train
+    )
 
-                "Precision": precision_score(
+    trained_models["Gradient Boosting"] = gradient_boosting
+
+    # =====================================================
+    # LOGISTIC REGRESSION
+    # =====================================================
+
+    logistic_regression = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+        ("classifier", LogisticRegression(
+            max_iter=2000,
+            class_weight="balanced",
+            random_state=42
+        ))
+    ])
+
+    logistic_regression.fit(
+        X_train,
+        y_train
+    )
+
+    trained_models["Logistic Regression"] = logistic_regression
+
+    # =====================================================
+    # EVALUATE MODELS
+    # =====================================================
+
+    for model_name, model in trained_models.items():
+
+        predictions = model.predict(X_test)
+
+        evaluation_results[model_name] = {
+
+            "Accuracy": round(
+                accuracy_score(y_test, predictions) * 100,
+                2
+            ),
+
+            "Precision": round(
+                precision_score(
                     y_test,
                     predictions,
                     average="weighted",
                     zero_division=0
-                ),
+                ) * 100,
+                2
+            ),
 
-                "Recall": recall_score(
+            "Recall": round(
+                recall_score(
                     y_test,
                     predictions,
                     average="weighted",
                     zero_division=0
-                ),
+                ) * 100,
+                2
+            ),
 
-                "F1 Score": f1_score(
+            "F1 Score": round(
+                f1_score(
                     y_test,
                     predictions,
                     average="weighted",
                     zero_division=0
-                )
-            }
-
-        except Exception as e:
-
-            print(
-                f"Error training {model_name}: {e}"
+                ) * 100,
+                2
             )
+        }
 
-    # Return exactly 3 values because risk_prediction.py
-    # expects 3 values.
+    # Returns exactly 3 values
     return trained_models, evaluation_results, X
 
 
 # =========================================================
-# 5. PREDICT A STUDENT
+# 5. PREDICT STUDENT RISK
 # =========================================================
 
 def predict_student(
@@ -278,13 +333,11 @@ def predict_student(
     assignments
 ):
 
-    student_data = pd.DataFrame({
-
-        "Attendance": [float(attendance)],
-        "Marks": [float(marks)],
-        "Assignments": [float(assignments)]
-
-    })
+    student_data = pd.DataFrame([{
+        "Attendance": float(attendance),
+        "Marks": float(marks),
+        "Assignments": float(assignments)
+    }])
 
     predicted_risk = model.predict(
         student_data
@@ -292,6 +345,7 @@ def predict_student(
 
     probabilities = {}
 
+    # Probability prediction
     if hasattr(model, "predict_proba"):
 
         raw_probabilities = model.predict_proba(
@@ -300,37 +354,33 @@ def predict_student(
 
         model_classes = model.classes_
 
+        for risk in RISK_LEVELS:
+            probabilities[risk] = 0.0
+
         for class_name, probability in zip(
             model_classes,
             raw_probabilities
         ):
 
-            probabilities[str(class_name)] = float(
-                probability
+            probabilities[class_name] = round(
+                float(probability) * 100,
+                2
             )
 
     else:
 
-        probabilities = {
-            str(predicted_risk): 1.0
-        }
+        for risk in RISK_LEVELS:
+            probabilities[risk] = 0.0
 
-    # Ensure all risk levels are present
-    for risk in RISK_LEVELS:
+        probabilities[predicted_risk] = 100.0
 
-        probabilities.setdefault(
-            risk,
-            0.0
-        )
-
-    # High/Critical combined probability
     high_risk_probability = (
-        probabilities.get("High", 0.0) +
-        probabilities.get("Critical", 0.0)
+        probabilities.get("High", 0)
+        + probabilities.get("Critical", 0)
     )
 
     return (
-        str(predicted_risk),
+        predicted_risk,
         probabilities,
         high_risk_probability
     )
@@ -342,67 +392,45 @@ def predict_student(
 
 def get_model_comparison(evaluation_results):
 
-    comparison_data = []
-
-    for model_name, metrics in evaluation_results.items():
-
-        comparison_data.append({
-
-            "Model": model_name,
-
-            "Accuracy": round(
-                metrics["Accuracy"] * 100, 2
-            ),
-
-            "Precision": round(
-                metrics["Precision"] * 100, 2
-            ),
-
-            "Recall": round(
-                metrics["Recall"] * 100, 2
-            ),
-
-            "F1 Score": round(
-                metrics["F1 Score"] * 100, 2
-            )
-
-        })
-
-    comparison_df = pd.DataFrame(
-        comparison_data
-    )
-
-    if not comparison_df.empty:
-
-        comparison_df = comparison_df.sort_values(
-            by="F1 Score",
-            ascending=False
-        ).reset_index(drop=True)
-
-    return comparison_df
-
-
-# =========================================================
-# 7. BEST MODEL
-# =========================================================
-
-def get_best_model(evaluation_results):
-
     if not evaluation_results:
+        return pd.DataFrame()
 
-        return None, 0
+    comparison = pd.DataFrame(
+        evaluation_results
+    ).T
+
+    comparison.index.name = "Model"
+
+    comparison = comparison.reset_index()
+
+    return comparison.sort_values(
+        by="Accuracy",
+        ascending=False
+    ).reset_index(drop=True)
+
+
+# =========================================================
+# 7. GET BEST MODEL
+# =========================================================
+
+def get_best_model(
+    trained_models,
+    evaluation_results
+):
+
+    if not trained_models or not evaluation_results:
+        return None, None
 
     best_model_name = max(
         evaluation_results,
-        key=lambda name:
-        evaluation_results[name]["F1 Score"]
+        key=lambda name: evaluation_results[name]["Accuracy"]
     )
 
-    best_f1 = evaluation_results[
+    best_model = trained_models.get(
         best_model_name
-    ]["F1 Score"]
+    )
 
-    return best_model_name, best_f1
+    return best_model_name, best_model
 
 
 # =========================================================
@@ -411,50 +439,54 @@ def get_best_model(evaluation_results):
 
 def get_feature_importance(model):
 
-    importance_values = None
+    importance = {}
 
     # Random Forest / Gradient Boosting
     if hasattr(model, "feature_importances_"):
 
-        importance_values = model.feature_importances_
+        values = model.feature_importances_
 
-    # Logistic Regression
+        for feature, value in zip(
+            FEATURE_COLUMNS,
+            values
+        ):
+            importance[feature] = float(value)
+
+    # Logistic Regression pipeline
     elif isinstance(model, Pipeline):
 
-        final_model = model.steps[-1][1]
+        classifier = model.named_steps.get(
+            "classifier"
+        )
 
-        if hasattr(final_model, "coef_"):
+        if classifier is not None and hasattr(
+            classifier,
+            "coef_"
+        ):
 
-            importance_values = np.mean(
-                np.abs(final_model.coef_),
-                axis=0
+            coefficients = np.abs(
+                classifier.coef_
             )
 
-    if importance_values is None:
+            values = coefficients.mean(axis=0)
 
-        return {}
+            for feature, value in zip(
+                FEATURE_COLUMNS,
+                values
+            ):
+                importance[feature] = float(value)
 
-    importance_data = {}
-
-    for feature, value in zip(
-        FEATURE_COLUMNS,
-        importance_values
-    ):
-
-        importance_data[feature] = float(value)
-
-    # Normalize to percentage
-    total = sum(importance_data.values())
+    # Normalize values to percentages
+    total = sum(importance.values())
 
     if total > 0:
 
-        importance_data = {
-
-            feature: value / total
-
-            for feature, value in
-            importance_data.items()
-
+        importance = {
+            feature: round(
+                (value / total) * 100,
+                2
+            )
+            for feature, value in importance.items()
         }
 
-    return importance_data
+    return importance

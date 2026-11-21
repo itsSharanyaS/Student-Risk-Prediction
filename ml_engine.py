@@ -3,350 +3,218 @@ import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score
-)
-
-# ==========================================================
-# CONFIGURATION
-# ==========================================================
 
 FEATURE_COLUMNS = ["Attendance", "Marks", "Assignments"]
 
 RISK_LEVELS = ["Low", "Moderate", "High", "Critical"]
 
 
-# ==========================================================
-# SYNTHETIC DATA GENERATOR
-# ==========================================================
+# =========================================================
+# 1. GENERATE TRAINING DATA
+# =========================================================
 
 def generate_training_data(size=1200):
 
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
 
-    size = max(400, int(size))
-    per_class = size // 4
+    attendance = rng.uniform(30, 100, size)
+    marks = rng.uniform(20, 100, size)
+    assignments = rng.uniform(20, 100, size)
 
-    def create_group(attendance_range, marks_range, assignment_range, label):
-
-        return pd.DataFrame({
-            "Attendance": np.random.uniform(
-                attendance_range[0], attendance_range[1], per_class
-            ),
-            "Marks": np.random.uniform(
-                marks_range[0], marks_range[1], per_class
-            ),
-            "Assignments": np.random.uniform(
-                assignment_range[0], assignment_range[1], per_class
-            ),
-            "Risk Level": [label] * per_class
-        })
-
-    low = create_group((85, 100), (75, 100), (80, 100), "Low")
-    moderate = create_group((65, 89), (50, 74), (55, 79), "Moderate")
-    high = create_group((40, 69), (30, 59), (35, 64), "High")
-    critical = create_group((15, 44), (10, 39), (15, 44), "Critical")
-
-    data = pd.concat(
-        [low, moderate, high, critical],
-        ignore_index=True
+    risk_score = (
+        (100 - attendance) * 0.40
+        + (100 - marks) * 0.40
+        + (100 - assignments) * 0.20
     )
 
-    return data.sample(
-        frac=1,
-        random_state=42
-    ).reset_index(drop=True)
+    risk = np.where(
+        risk_score >= 70, "Critical",
+        np.where(
+            risk_score >= 55, "High",
+            np.where(risk_score >= 35, "Moderate", "Low")
+        )
+    )
+
+    return pd.DataFrame({
+        "Attendance": attendance,
+        "Marks": marks,
+        "Assignments": assignments,
+        "Risk Level": risk
+    })
 
 
-# ==========================================================
-# DATA PREPARATION
-# ==========================================================
+# =========================================================
+# 2. PREPARE DATA
+# =========================================================
 
 def prepare_data(df=None):
 
-    if df is None or "Risk Level" not in df.columns:
-        df = generate_training_data(1200)
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        df = generate_training_data()
 
-    df = df.copy()
+    required = FEATURE_COLUMNS + ["Risk Level"]
 
-    required_columns = FEATURE_COLUMNS + ["Risk Level"]
+    if not all(col in df.columns for col in required):
+        df = generate_training_data()
 
-    missing = [
-        column for column in required_columns
-        if column not in df.columns
-    ]
+    df = df[required].copy()
 
-    if missing:
-        raise ValueError(
-            "Missing columns: " + ", ".join(missing)
-        )
+    for col in FEATURE_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    df["Risk Level"] = (
-        df["Risk Level"]
-        .astype(str)
-        .str.strip()
-        .str.title()
-    )
+    df["Risk Level"] = df["Risk Level"].astype(str)
 
-    df = df[df["Risk Level"].isin(RISK_LEVELS)].copy()
+    df = df.dropna(subset=FEATURE_COLUMNS + ["Risk Level"])
 
-    for column in FEATURE_COLUMNS:
-        df[column] = pd.to_numeric(
-            df[column],
-            errors="coerce"
-        )
+    if df.empty or df["Risk Level"].nunique() < 2:
+        df = generate_training_data()
 
-    X = df[FEATURE_COLUMNS].copy()
-    y = df["Risk Level"].copy()
+    return df
 
-    # Remove rows with all features missing
-    valid_rows = X.notna().any(axis=1)
 
-    X = X.loc[valid_rows].reset_index(drop=True)
-    y = y.loc[valid_rows].reset_index(drop=True)
+# =========================================================
+# 3. TRAIN MODELS
+# =========================================================
 
-    # Use fallback data if dataset is unsuitable
+def train_models(df=None):
+
+    data = prepare_data(df)
+
+    X = data[FEATURE_COLUMNS]
+    y = data["Risk Level"]
+
+    # Remove classes with insufficient samples
     counts = y.value_counts()
 
-    if len(counts) < 2 or counts.min() < 2:
-
-        fallback = generate_training_data(1200)
-
-        X = fallback[FEATURE_COLUMNS].copy()
-        y = fallback["Risk Level"].copy()
-
-    return X, y
-
-
-# ==========================================================
-# SAFE TRAIN / TEST SPLIT
-# ==========================================================
-
-def _safe_training_split(X, y):
-
-    X = X.copy().reset_index(drop=True)
-    y = y.copy().reset_index(drop=True)
-
-    counts = y.value_counts()
-
-    # Remove categories having fewer than 2 samples
     valid_classes = counts[counts >= 2].index
 
-    valid_rows = y.isin(valid_classes)
+    data = data[data["Risk Level"].isin(valid_classes)]
 
-    X = X.loc[valid_rows].reset_index(drop=True)
-    y = y.loc[valid_rows].reset_index(drop=True)
+    # If the data is too small, use synthetic data
+    if data.empty or data["Risk Level"].nunique() < 2:
+        data = generate_training_data()
 
-    counts = y.value_counts()
+    X = data[FEATURE_COLUMNS]
+    y = data["Risk Level"]
 
-    # Ensure every class has enough samples for splitting
-    if len(counts) < 2 or counts.min() < 2:
+    # Safe stratified split
+    test_count = max(int(np.ceil(len(data) * 0.25)), y.nunique())
 
-        fallback = generate_training_data(1200)
+    if test_count >= len(data):
+        data = generate_training_data()
+        X = data[FEATURE_COLUMNS]
+        y = data["Risk Level"]
+        test_count = max(int(np.ceil(len(data) * 0.25)), y.nunique())
 
-        X = fallback[FEATURE_COLUMNS].copy()
-        y = fallback["Risk Level"].copy()
-
-    # Safely determine test size for stratified split
-    test_size = max(
-        len(y) * 0.25,
-        y.nunique()
-    )
-
-    test_size = int(np.ceil(test_size))
-
-    if test_size >= len(y):
-        test_size = max(y.nunique(), int(len(y) * 0.25))
-
-    return train_test_split(
+    X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=test_size,
+        test_size=test_count,
         random_state=42,
         stratify=y
     )
 
+    models = {
+        "Random Forest": RandomForestClassifier(
+            n_estimators=150,
+            max_depth=8,
+            random_state=42
+        ),
 
-# ==========================================================
-# TRAIN MACHINE LEARNING MODELS
-# ==========================================================
+        "Gradient Boosting": GradientBoostingClassifier(
+            n_estimators=100,
+            learning_rate=0.08,
+            random_state=42
+        ),
 
-def train_models(df=None):
-
-    X, y = prepare_data(df)
-
-    X_train, X_test, y_train, y_test = _safe_training_split(X, y)
+        "Logistic Regression": Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("classifier", LogisticRegression(max_iter=2000))
+        ])
+    }
 
     trained_models = {}
     evaluation_results = {}
 
-    # ------------------------------------------------------
-    # RANDOM FOREST
-    # ------------------------------------------------------
+    for name, model in models.items():
 
-    random_forest = RandomForestClassifier(
-        n_estimators=250,
-        max_depth=10,
-        min_samples_split=3,
-        class_weight="balanced",
-        random_state=42
-    )
-
-    random_forest.fit(X_train, y_train)
-
-    trained_models["Random Forest"] = random_forest
-
-    # ------------------------------------------------------
-    # GRADIENT BOOSTING
-    # ------------------------------------------------------
-
-    gradient_boosting = GradientBoostingClassifier(
-        n_estimators=150,
-        learning_rate=0.08,
-        max_depth=3,
-        random_state=42
-    )
-
-    gradient_boosting.fit(X_train, y_train)
-
-    trained_models["Gradient Boosting"] = gradient_boosting
-
-    # ------------------------------------------------------
-    # LOGISTIC REGRESSION
-    # ------------------------------------------------------
-
-    logistic_regression = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-        ("classifier", LogisticRegression(
-            max_iter=2500,
-            class_weight="balanced",
-            random_state=42
-        ))
-    ])
-
-    logistic_regression.fit(X_train, y_train)
-
-    trained_models["Logistic Regression"] = logistic_regression
-
-    # ------------------------------------------------------
-    # MODEL EVALUATION
-    # ------------------------------------------------------
-
-    for name, model in trained_models.items():
+        model.fit(X_train, y_train)
 
         predictions = model.predict(X_test)
 
+        trained_models[name] = model
+
         evaluation_results[name] = {
-            "Accuracy": round(
-                accuracy_score(y_test, predictions) * 100, 2
+            "Accuracy": accuracy_score(y_test, predictions),
+            "Precision": precision_score(
+                y_test, predictions, average="weighted", zero_division=0
             ),
-            "Precision": round(
-                precision_score(
-                    y_test,
-                    predictions,
-                    average="weighted",
-                    zero_division=0
-                ) * 100, 2
+            "Recall": recall_score(
+                y_test, predictions, average="weighted", zero_division=0
             ),
-            "Recall": round(
-                recall_score(
-                    y_test,
-                    predictions,
-                    average="weighted",
-                    zero_division=0
-                ) * 100, 2
-            ),
-            "F1 Score": round(
-                f1_score(
-                    y_test,
-                    predictions,
-                    average="weighted",
-                    zero_division=0
-                ) * 100, 2
+            "F1 Score": f1_score(
+                y_test, predictions, average="weighted", zero_division=0
             )
         }
 
     return trained_models, evaluation_results, X
 
 
-# ==========================================================
-# STUDENT RISK PREDICTION
-# ==========================================================
+# =========================================================
+# 4. STUDENT PREDICTION
+# =========================================================
 
 def predict_student(model, attendance, marks, assignments):
 
-    student = pd.DataFrame([{
-        "Attendance": float(attendance),
-        "Marks": float(marks),
-        "Assignments": float(assignments)
+    input_data = pd.DataFrame([{
+        "Attendance": attendance,
+        "Marks": marks,
+        "Assignments": assignments
     }])
 
-    predicted_risk = model.predict(student)[0]
+    prediction = model.predict(input_data)[0]
 
-    probabilities = {
-        risk: 0.0 for risk in RISK_LEVELS
+    probabilities = model.predict_proba(input_data)[0]
+
+    classes = model.classes_
+
+    probability_dict = {
+        str(classes[i]): float(probabilities[i] * 100)
+        for i in range(len(classes))
     }
 
-    if hasattr(model, "predict_proba"):
-
-        raw_probabilities = model.predict_proba(student)[0]
-
-        classes = model.classes_
-
-        for risk, probability in zip(classes, raw_probabilities):
-
-            probabilities[risk] = round(
-                float(probability) * 100, 2
-            )
-
-    else:
-
-        probabilities[predicted_risk] = 100.0
-
-    high_risk_probability = round(
-        probabilities.get("High", 0.0)
-        + probabilities.get("Critical", 0.0),
-        2
+    high_risk_probability = (
+        probability_dict.get("High", 0)
+        + probability_dict.get("Critical", 0)
     )
 
-    return predicted_risk, probabilities, high_risk_probability
+    return prediction, probability_dict, high_risk_probability
 
 
-# ==========================================================
-# MODEL COMPARISON
-# ==========================================================
+# =========================================================
+# 5. MODEL COMPARISON
+# =========================================================
 
 def get_model_comparison(evaluation_results):
 
     if not evaluation_results:
         return pd.DataFrame()
 
-    comparison = pd.DataFrame(
-        evaluation_results
-    ).T
+    df = pd.DataFrame(evaluation_results).T
 
-    comparison.index.name = "Model"
-
-    comparison = comparison.reset_index()
-
-    return comparison.sort_values(
-        by="Accuracy",
-        ascending=False
-    ).reset_index(drop=True)
+    return df.reset_index().rename(columns={"index": "Model"})
 
 
-# ==========================================================
-# BEST MODEL
-# ==========================================================
+# =========================================================
+# 6. BEST MODEL
+# =========================================================
 
 def get_best_model(trained_models, evaluation_results):
 
@@ -355,81 +223,76 @@ def get_best_model(trained_models, evaluation_results):
 
     best_name = max(
         evaluation_results,
-        key=lambda name: evaluation_results[name]["Accuracy"]
+        key=lambda name: evaluation_results[name]["F1 Score"]
     )
 
-    return best_name, trained_models.get(best_name)
+    return best_name, trained_models[best_name]
 
 
-# ==========================================================
-# FEATURE IMPORTANCE
-# ==========================================================
+# =========================================================
+# 7. FEATURE IMPORTANCE
+# =========================================================
 
 def get_feature_importance(model):
 
-    importance = {}
-
     if model is None:
-        return importance
+        return pd.DataFrame()
 
-    # Tree-based models
+    importance = None
+
     if hasattr(model, "feature_importances_"):
+        importance = model.feature_importances_
 
-        values = model.feature_importances_
-
-        for feature, value in zip(FEATURE_COLUMNS, values):
-            importance[feature] = float(value)
-
-    # Logistic Regression pipeline
     elif isinstance(model, Pipeline):
 
         classifier = model.named_steps.get("classifier")
 
         if classifier is not None and hasattr(classifier, "coef_"):
+            importance = np.abs(classifier.coef_).mean(axis=0)
 
-            values = np.abs(classifier.coef_).mean(axis=0)
+    if importance is None:
+        return pd.DataFrame({
+            "Feature": FEATURE_COLUMNS,
+            "Importance": [0, 0, 0]
+        })
 
-            for feature, value in zip(FEATURE_COLUMNS, values):
-                importance[feature] = float(value)
+    importance = np.asarray(importance, dtype=float)
 
-    total = sum(importance.values())
+    total = importance.sum()
 
     if total > 0:
+        importance = importance / total * 100
 
-        importance = {
-            feature: round(
-                (value / total) * 100, 2
-            )
-            for feature, value in importance.items()
-        }
-
-    return importance
+    return pd.DataFrame({
+        "Feature": FEATURE_COLUMNS,
+        "Importance": importance
+    }).sort_values("Importance", ascending=False)
 
 
-# ==========================================================
-# COMPATIBILITY ALIASES
-# ==========================================================
+# =========================================================
+# 8. COMPATIBILITY FUNCTION
+# =========================================================
 
-# Supports pages using the plural function name
 def get_feature_importances(model):
     return get_feature_importance(model)
 
 
-# Supports older pages using an alternate name
 def calculate_feature_importance(model):
     return get_feature_importance(model)
 
 
-# ==========================================================
-# TRAINING DATA SUMMARY
-# ==========================================================
+# =========================================================
+# 9. TRAINING DATA SUMMARY
+# =========================================================
 
 def get_training_data_summary(df=None):
 
-    if df is None or "Risk Level" not in df.columns:
-        df = generate_training_data(1200)
+    data = prepare_data(df)
 
     return {
-        "Total Students": int(len(df)),
-        "Risk Distribution": df["Risk Level"].value_counts().to_dict()
+        "total_students": len(data),
+        "risk_distribution": data["Risk Level"].value_counts().to_dict(),
+        "average_attendance": float(data["Attendance"].mean()),
+        "average_marks": float(data["Marks"].mean()),
+        "average_assignments": float(data["Assignments"].mean())
     }

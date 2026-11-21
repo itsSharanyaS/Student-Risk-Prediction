@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
 
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
@@ -19,75 +19,133 @@ from sklearn.metrics import (
 
 
 # =========================================================
-# 1. PREPARE DATA
+# 1. FEATURES
 # =========================================================
 
-def prepare_data(df):
+FEATURE_COLUMNS = [
+    "Attendance",
+    "Marks",
+    "Assignments"
+]
+
+RISK_LEVELS = [
+    "Low",
+    "Moderate",
+    "High",
+    "Critical"
+]
+
+
+# =========================================================
+# 2. GENERATE SYNTHETIC TRAINING DATA
+# =========================================================
+
+def generate_training_data(size=1200):
+
+    np.random.seed(42)
+
+    attendance = np.random.uniform(35, 100, size)
+    marks = np.random.uniform(25, 100, size)
+    assignments = np.random.uniform(30, 100, size)
+
+    # Academic risk score
+    risk_score = (
+        (100 - attendance) * 0.45 +
+        (100 - marks) * 0.35 +
+        (100 - assignments) * 0.20
+    )
+
+    # Small random variation
+    risk_score += np.random.normal(0, 4, size)
+
+    risk_level = []
+
+    for score in risk_score:
+
+        if score < 30:
+            risk_level.append("Low")
+
+        elif score < 48:
+            risk_level.append("Moderate")
+
+        elif score < 68:
+            risk_level.append("High")
+
+        else:
+            risk_level.append("Critical")
+
+    data = pd.DataFrame({
+
+        "Attendance": attendance,
+        "Marks": marks,
+        "Assignments": assignments,
+        "Risk Level": risk_level
+
+    })
+
+    return data
+
+
+# =========================================================
+# 3. PREPARE DATA
+# =========================================================
+
+def prepare_data(df=None):
+
+    if df is None:
+        df = generate_training_data()
 
     data = df.copy()
 
-    target_column = "Risk Level"
+    required_columns = FEATURE_COLUMNS + ["Risk Level"]
 
-    if target_column not in data.columns:
-        raise ValueError("Risk Level column not found in dataset.")
-
-    data = data.dropna(subset=[target_column])
-
-    X = data.drop(columns=[target_column])
-    y = data[target_column]
-
-    # Remove ID columns if present
-    id_columns = [
-        col for col in X.columns
-        if "id" in col.lower()
+    missing_columns = [
+        col for col in required_columns
+        if col not in data.columns
     ]
 
-    X = X.drop(columns=id_columns, errors="ignore")
+    if missing_columns:
+        raise ValueError(
+            f"Missing required columns: {missing_columns}"
+        )
 
-    # Encode categorical features
-    categorical_columns = X.select_dtypes(
-        include=["object", "category", "bool"]
-    ).columns.tolist()
+    data = data[required_columns].copy()
 
-    X = pd.get_dummies(
-        X,
-        columns=categorical_columns,
-        drop_first=False
-    )
+    data["Risk Level"] = data["Risk Level"].astype(str)
 
-    # Encode target labels
-    label_encoder = LabelEncoder()
-    y_encoded = label_encoder.fit_transform(y)
+    data = data.dropna()
 
-    return X, y_encoded, label_encoder
+    X = data[FEATURE_COLUMNS].astype(float)
+
+    y = data["Risk Level"]
+
+    return X, y
 
 
 # =========================================================
-# 2. TRAIN MODELS
+# 4. TRAIN MODELS
 # =========================================================
 
-def train_models(df):
+def train_models(df=None):
 
-    X, y, label_encoder = prepare_data(df)
+    X, y = prepare_data(df)
 
-    if len(X) < 10:
-        raise ValueError("At least 10 student records are required.")
+    if len(X) < 20:
+        raise ValueError(
+            "At least 20 records are required for model training."
+        )
 
-    if len(np.unique(y)) < 2:
-        raise ValueError("At least two Risk Level classes are required.")
-
-    class_counts = pd.Series(y).value_counts()
-
-    stratify_option = (
-        y if class_counts.min() >= 2 else None
-    )
+    if y.nunique() < 2:
+        raise ValueError(
+            "At least two risk categories are required."
+        )
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
         test_size=0.25,
         random_state=42,
-        stratify=stratify_option
+        stratify=y
     )
 
     models = {
@@ -107,12 +165,18 @@ def train_models(df):
         ),
 
         "Logistic Regression": Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
+
+            ("imputer", SimpleImputer(
+                strategy="median"
+            )),
+
             ("scaler", StandardScaler()),
+
             ("model", LogisticRegression(
-                max_iter=1000,
+                max_iter=1500,
                 class_weight="balanced"
             ))
+
         ])
     }
 
@@ -132,7 +196,8 @@ def train_models(df):
             evaluation_results[model_name] = {
 
                 "Accuracy": accuracy_score(
-                    y_test, predictions
+                    y_test,
+                    predictions
                 ),
 
                 "Precision": precision_score(
@@ -159,63 +224,86 @@ def train_models(df):
 
         except Exception as e:
 
-            print(f"Model error - {model_name}: {e}")
+            print(
+                f"Error training {model_name}: {e}"
+            )
 
-    return trained_models, evaluation_results, X.columns.tolist(), label_encoder
+    # Return exactly 3 values because risk_prediction.py
+    # expects 3 values.
+    return trained_models, evaluation_results, X
 
 
 # =========================================================
-# 3. PREDICT STUDENT
+# 5. PREDICT A STUDENT
 # =========================================================
 
 def predict_student(
-    student_data,
     model,
-    feature_columns,
-    label_encoder
+    attendance,
+    marks,
+    assignments
 ):
 
-    student_df = pd.DataFrame([student_data])
+    student_data = pd.DataFrame({
 
-    # Remove ID columns
-    id_columns = [
-        col for col in student_df.columns
-        if "id" in col.lower()
-    ]
+        "Attendance": [float(attendance)],
+        "Marks": [float(marks)],
+        "Assignments": [float(assignments)]
 
-    student_df = student_df.drop(
-        columns=id_columns,
-        errors="ignore"
-    )
+    })
 
-    # Encode categorical values
-    categorical_columns = student_df.select_dtypes(
-        include=["object", "category", "bool"]
-    ).columns.tolist()
-
-    student_df = pd.get_dummies(
-        student_df,
-        columns=categorical_columns,
-        drop_first=False
-    )
-
-    # Align input with training features
-    student_df = student_df.reindex(
-        columns=feature_columns,
-        fill_value=0
-    )
-
-    prediction = model.predict(student_df)
-
-    predicted_label = label_encoder.inverse_transform(
-        prediction.astype(int)
+    predicted_risk = model.predict(
+        student_data
     )[0]
 
-    return predicted_label
+    probabilities = {}
+
+    if hasattr(model, "predict_proba"):
+
+        raw_probabilities = model.predict_proba(
+            student_data
+        )[0]
+
+        model_classes = model.classes_
+
+        for class_name, probability in zip(
+            model_classes,
+            raw_probabilities
+        ):
+
+            probabilities[str(class_name)] = float(
+                probability
+            )
+
+    else:
+
+        probabilities = {
+            str(predicted_risk): 1.0
+        }
+
+    # Ensure all risk levels are present
+    for risk in RISK_LEVELS:
+
+        probabilities.setdefault(
+            risk,
+            0.0
+        )
+
+    # High/Critical combined probability
+    high_risk_probability = (
+        probabilities.get("High", 0.0) +
+        probabilities.get("Critical", 0.0)
+    )
+
+    return (
+        str(predicted_risk),
+        probabilities,
+        high_risk_probability
+    )
 
 
 # =========================================================
-# 4. MODEL COMPARISON
+# 6. MODEL COMPARISON
 # =========================================================
 
 def get_model_comparison(evaluation_results):
@@ -243,9 +331,12 @@ def get_model_comparison(evaluation_results):
             "F1 Score": round(
                 metrics["F1 Score"] * 100, 2
             )
+
         })
 
-    comparison_df = pd.DataFrame(comparison_data)
+    comparison_df = pd.DataFrame(
+        comparison_data
+    )
 
     if not comparison_df.empty:
 
@@ -258,19 +349,78 @@ def get_model_comparison(evaluation_results):
 
 
 # =========================================================
-# 5. BEST MODEL
+# 7. BEST MODEL
 # =========================================================
 
 def get_best_model(evaluation_results):
 
     if not evaluation_results:
+
         return None, 0
 
     best_model_name = max(
         evaluation_results,
-        key=lambda name: evaluation_results[name]["F1 Score"]
+        key=lambda name:
+        evaluation_results[name]["F1 Score"]
     )
 
-    best_f1 = evaluation_results[best_model_name]["F1 Score"]
+    best_f1 = evaluation_results[
+        best_model_name
+    ]["F1 Score"]
 
     return best_model_name, best_f1
+
+
+# =========================================================
+# 8. FEATURE IMPORTANCE
+# =========================================================
+
+def get_feature_importance(model):
+
+    importance_values = None
+
+    # Random Forest / Gradient Boosting
+    if hasattr(model, "feature_importances_"):
+
+        importance_values = model.feature_importances_
+
+    # Logistic Regression
+    elif isinstance(model, Pipeline):
+
+        final_model = model.steps[-1][1]
+
+        if hasattr(final_model, "coef_"):
+
+            importance_values = np.mean(
+                np.abs(final_model.coef_),
+                axis=0
+            )
+
+    if importance_values is None:
+
+        return {}
+
+    importance_data = {}
+
+    for feature, value in zip(
+        FEATURE_COLUMNS,
+        importance_values
+    ):
+
+        importance_data[feature] = float(value)
+
+    # Normalize to percentage
+    total = sum(importance_data.values())
+
+    if total > 0:
+
+        importance_data = {
+
+            feature: value / total
+
+            for feature, value in
+            importance_data.items()
+
+        }
+
+    return importance_data

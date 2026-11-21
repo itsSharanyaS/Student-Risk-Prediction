@@ -11,6 +11,7 @@ from modules.faculty_dashboard import render_faculty_dashboard
 from modules.intervention_effectiveness import render_intervention_effectiveness
 from modules.academic_report_generator import render_academic_report_generator
 from modules.authentication import render_login, logout_user, is_authenticated, get_user_role, get_username
+from modules.database import render_database_dashboard
 
 # =========================================================
 # 1. PAGE CONFIGURATION
@@ -291,7 +292,7 @@ role_pages = {
         "Student Risk Trend Analyzer", "Subject-Level Intelligence",
         "Student Clustering", "Anomaly Detection", "AI Recovery Pathway",
         "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
-        "Academic Report Generator", "Risk Analytics", "Early Warning Center",
+        "Academic Report Generator", "Database Management", "Risk Analytics", "Early Warning Center",
         "Recovery Plans", "About Project"
     ],
     "Faculty": [
@@ -1196,6 +1197,15 @@ elif page == "AI Recovery Pathway":
 # 19. ABOUT PROJECT
 # =========================================================
 
+elif page == "Database Management":
+
+    render_database_dashboard(students)
+
+
+# =========================================================
+# 19. ABOUT PROJECT
+# =========================================================
+
 elif page == "About Project":
 
     st.title("🎓 About Student Risk Prediction")
@@ -1268,6 +1278,7 @@ elif page == "About Project":
     - AI recovery pathway
     - Intervention effectiveness analysis
     - Academic report generation
+    - SQLite database management and intervention storage
     - Database integration
     - Role-based login
     - Automated reports

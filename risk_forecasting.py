@@ -50,7 +50,8 @@ def render_risk_forecasting(students, apply_chart_theme, risk_colors):
 
     student_id = st.selectbox(
         "Select Student",
-        students["USN"].tolist(),
+        student_id_col = "student_id" if "student_id" in students.columns else "USN"
+        students[student_id_col].tolist()
         key="forecast_student"
     )
 

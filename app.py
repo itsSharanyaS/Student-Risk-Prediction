@@ -30,110 +30,66 @@ st.set_page_config(
 DATA_PATH = Path("data/students.csv")
 
 # =========================================================
-# 2. SOLID NAVY BLUE THEME
+# 2. LIGHT / DARK THEME
 # =========================================================
 
-bg_color = "#FFFFFF"
-card_color = "#FFFFFF"
-sidebar_color = "#0B1F3A"
-text_color = "#0B1F3A"
-secondary_text = "#0B1F3A"
-border_color = "#0B1F3A"
+NAVY = "#0B1F3A"
+WHITE = "#FFFFFF"
+
+if "app_theme" not in st.session_state:
+    st.session_state.app_theme = "Light"
+
+is_dark = st.session_state.app_theme == "Dark"
+bg_color = NAVY if is_dark else WHITE
+card_color = NAVY if is_dark else WHITE
+sidebar_color = NAVY
+text_color = WHITE if is_dark else NAVY
+secondary_text = text_color
+border_color = WHITE if is_dark else NAVY
 chart_template = "plotly_white"
 
-st.markdown("""
+st.markdown(f"""
 <style>
-/* STRICT NAVY BLUE + WHITE THEME */
-:root {
-    --navy: #0B1F3A;
-    --white: #FFFFFF;
-}
+:root {{ --navy: {NAVY}; --white: {WHITE}; --page-bg: {bg_color}; --page-text: {text_color}; --card-border: {border_color}; }}
+/* Main page theme */
 .stApp, [data-testid="stMain"], [data-testid="stMainBlockContainer"],
-.main, .block-container, [data-testid="stMainBlockContainer"] {
-    background: #FFFFFF !important;
-    color: #0B1F3A !important;
-}
-/* Navy sidebar with readable white text */
-[data-testid="stSidebar"], [data-testid="stSidebar"] > div {
-    background: #0B1F3A !important;
-    border-right: 1px solid #0B1F3A !important;
-}
-[data-testid="stSidebar"] * { color: #FFFFFF !important; }
-/* Main content typography */
-[data-testid="stMain"] h1, [data-testid="stMain"] h2,
-[data-testid="stMain"] h3, [data-testid="stMain"] h4,
-[data-testid="stMain"] p, [data-testid="stMain"] label,
+.main, .block-container {{ background: {bg_color} !important; color: {text_color} !important; }}
+[data-testid="stMain"] h1, [data-testid="stMain"] h2, [data-testid="stMain"] h3,
+[data-testid="stMain"] h4, [data-testid="stMain"] p, [data-testid="stMain"] label,
 [data-testid="stMain"] span, [data-testid="stMain"] li,
 [data-testid="stMain"] [data-testid="stWidgetLabel"],
 [data-testid="stMain"] [data-testid="stMetricLabel"],
-[data-testid="stMain"] [data-testid="stMetricValue"] {
-    color: #0B1F3A !important;
-}
-/* White KPI cards with navy borders */
-[data-testid="stMetric"] {
-    background: #FFFFFF !important;
-    border: 1px solid #0B1F3A !important;
-    padding: 16px 18px !important;
-    border-radius: 10px !important;
-    box-shadow: none !important;
-}
-[data-testid="stMetricLabel"], [data-testid="stMetricValue"],
-[data-testid="stMetricDelta"] { color: #0B1F3A !important; }
-[data-testid="stDataFrame"], [data-testid="stTable"] {
-    border: 1px solid #0B1F3A !important;
-    border-radius: 8px !important;
-    background: #FFFFFF !important;
-}
-/* All main-area inputs and select boxes */
-[data-testid="stMain"] input, [data-testid="stMain"] textarea,
-[data-testid="stMain"] select,
-[data-testid="stMain"] [data-baseweb="select"] > div {
-    background: #FFFFFF !important;
-    color: #0B1F3A !important;
-    border: 1px solid #0B1F3A !important;
-}
-[data-testid="stMain"] input::placeholder, [data-testid="stMain"] textarea::placeholder {
-    color: #0B1F3A !important;
-    opacity: 1 !important;
-}
-/* Dropdown menus: white background, navy text */
-[data-baseweb="popover"], [data-baseweb="menu"],
-[data-baseweb="select"] ul, [role="listbox"], [role="option"] {
-    background: #FFFFFF !important;
-    color: #0B1F3A !important;
-}
-[data-baseweb="option"] *, [role="option"] * { color: #0B1F3A !important; }
-/* Sidebar input fields */
+[data-testid="stMain"] [data-testid="stMetricValue"] {{ color: {text_color} !important; }}
+/* Navy sidebar, white labels */
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div {{ background: {NAVY} !important; border-right: 1px solid {NAVY} !important; }}
+[data-testid="stSidebar"] * {{ color: {WHITE} !important; }}
+/* Stacked navigation radio labels */
+[data-testid="stSidebar"] [role="radiogroup"] {{ display: flex !important; flex-direction: column !important; gap: 2px !important; }}
+[data-testid="stSidebar"] [role="radiogroup"] label {{ padding: 6px 8px !important; border-radius: 6px !important; }}
+/* Metrics and data containers */
+[data-testid="stMetric"] {{ background: {card_color} !important; border: 1px solid {border_color} !important; padding: 16px 18px !important; border-radius: 10px !important; box-shadow: none !important; }}
+[data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{ color: {text_color} !important; }}
+[data-testid="stDataFrame"], [data-testid="stTable"] {{ border: 1px solid {border_color} !important; border-radius: 8px !important; background: {card_color} !important; }}
+/* Inputs/select boxes stay readable */
+[data-testid="stMain"] input, [data-testid="stMain"] textarea, [data-testid="stMain"] select,
+[data-testid="stMain"] [data-baseweb="select"] > div {{ background: {WHITE} !important; color: {NAVY} !important; border: 1px solid {NAVY} !important; }}
+[data-testid="stMain"] input::placeholder, [data-testid="stMain"] textarea::placeholder {{ color: {NAVY} !important; opacity: 1 !important; }}
+[data-baseweb="popover"], [data-baseweb="menu"], [data-baseweb="select"] ul,
+[role="listbox"], [role="option"] {{ background: {WHITE} !important; color: {NAVY} !important; }}
+[data-baseweb="option"] *, [role="option"] * {{ color: {NAVY} !important; }}
 [data-testid="stSidebar"] input, [data-testid="stSidebar"] textarea,
-[data-testid="stSidebar"] [data-baseweb="select"] > div {
-    background: #FFFFFF !important;
-    color: #0B1F3A !important;
-    border: 1px solid #FFFFFF !important;
-}
-[data-testid="stSidebar"] [data-baseweb="popover"],
-[data-testid="stSidebar"] [role="listbox"],
-[data-testid="stSidebar"] [role="option"] {
-    background: #FFFFFF !important;
-    color: #0B1F3A !important;
-}
-[data-testid="stSidebar"] [role="option"] * { color: #0B1F3A !important; }
-/* Buttons: navy with white text */
-.stButton button, [data-testid="stDownloadButton"] button {
-    background: #0B1F3A !important;
-    color: #FFFFFF !important;
-    border: 1px solid #0B1F3A !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-}
-.stButton button *, [data-testid="stDownloadButton"] button * { color: #FFFFFF !important; }
-hr { border-color: #0B1F3A !important; }
-/* Keep sidebar open and hide collapse chevron */
-[data-testid="stSidebarCollapseButton"], [data-testid="collapsedControl"] {
-    display: none !important;
-}
+[data-testid="stSidebar"] [data-baseweb="select"] > div {{ background: {WHITE} !important; color: {NAVY} !important; border: 1px solid {WHITE} !important; }}
+[data-testid="stSidebar"] [data-baseweb="popover"], [data-testid="stSidebar"] [role="listbox"],
+[data-testid="stSidebar"] [role="option"] {{ background: {WHITE} !important; color: {NAVY} !important; }}
+[data-testid="stSidebar"] [role="option"] * {{ color: {NAVY} !important; }}
+/* Buttons */
+.stButton button, [data-testid="stDownloadButton"] button {{ background: {NAVY} !important; color: {WHITE} !important; border: 1px solid {NAVY} !important; border-radius: 8px !important; font-weight: 600 !important; }}
+.stButton button *, [data-testid="stDownloadButton"] button * {{ color: {WHITE} !important; }}
+hr {{ border-color: {border_color} !important; }}
+/* Keep sidebar open */
+[data-testid="stSidebarCollapseButton"], [data-testid="collapsedControl"] {{ display: none !important; }}
 </style>
 """, unsafe_allow_html=True)
-
 
 
 # =========================================================
@@ -150,6 +106,7 @@ current_username = get_username()
 # Set Dashboard as the landing page once per authenticated session.
 if not st.session_state.get("_post_login_landing_set", False):
     st.session_state.current_page = "Dashboard"
+    st.session_state.sidebar_page = "Dashboard"
     st.session_state.nav_select = "Choose a module"
     st.session_state._post_login_landing_set = True
 
@@ -345,13 +302,25 @@ average_marks = students["Marks"].mean()
 average_assignments = students["Assignments"].mean()
 
 # =========================================================
-# 7. SIDEBAR NAVIGATION
+# 7. SIDEBAR NAVIGATION + THEME CONTROL
 # =========================================================
+
+st.sidebar.divider()
+st.sidebar.markdown("## 🎨 Appearance")
+st.sidebar.radio(
+    "Theme",
+    options=["Light", "Dark"],
+    horizontal=True,
+    key="app_theme",
+    label_visibility="collapsed"
+)
+# If the theme selection changed, rerun so the page CSS updates immediately.
+# Streamlit reruns on radio interaction automatically.
 
 st.sidebar.divider()
 st.sidebar.title("🎓 Student Intelligence")
 st.sidebar.caption("Academic monitoring and risk analysis platform")
-    
+
 role_pages = {
     "Admin": [
         "Student Management", "Risk Prediction Center", "Explainable AI",
@@ -387,28 +356,32 @@ st.sidebar.markdown(f"### 👤 {current_username}")
 st.sidebar.caption(f"Role: {current_role}")
 if st.sidebar.button("🚪 Logout", use_container_width=True):
     st.session_state._post_login_landing_set = False
+    st.session_state.pop("sidebar_page", None)
     logout_user()
     st.rerun()
 
-# Dashboard is the post-login landing page and is not a navigation option.
+
+# Dashboard is the landing page and is now listed alongside the modules.
+sidebar_pages = ["Dashboard"] + available_pages
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Dashboard"
-if "nav_select" not in st.session_state:
-    st.session_state.nav_select = "Choose a module"
+if "sidebar_page" not in st.session_state:
+    st.session_state.sidebar_page = st.session_state.current_page if st.session_state.current_page in sidebar_pages else "Dashboard"
 
-if st.sidebar.button("🏠 Home", use_container_width=True):
+# Keep navigation state aligned if the landing page was reset after login.
+if st.session_state.current_page not in sidebar_pages:
     st.session_state.current_page = "Dashboard"
-    st.session_state.nav_select = "Choose a module"
-    st.rerun()
+    st.session_state.sidebar_page = "Dashboard"
 
-selected_module = st.sidebar.selectbox(
-    "Open a feature",
-    ["Choose a module"] + available_pages,
-    key="nav_select"
+st.sidebar.markdown("### 📂 Features")
+selected_page = st.sidebar.radio(
+    "Navigate to a page",
+    options=sidebar_pages,
+    key="sidebar_page",
+    label_visibility="collapsed"
 )
-if selected_module != "Choose a module":
-    st.session_state.current_page = selected_module
-page = st.session_state.current_page
+st.session_state.current_page = selected_page
+page = selected_page
 
 st.sidebar.divider()
 st.sidebar.markdown("### Risk Legend")

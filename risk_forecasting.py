@@ -1,11 +1,15 @@
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 
 
+# =========================================================
+# 1. RISK CLASSIFICATION
+# =========================================================
+
 def forecast_risk(attendance, marks, assignments):
+
     def get_risk(a, m, ass):
         if a < 50 or m < 35:
             return "Critical"
@@ -17,7 +21,7 @@ def forecast_risk(attendance, marks, assignments):
 
     current_risk = get_risk(attendance, marks, assignments)
 
-    # Simulate gradual academic decline
+    # Simulated academic decline scenario
     future_attendance = max(0, attendance - 10)
     future_marks = max(0, marks - 8)
     future_assignments = max(0, assignments - 10)
@@ -37,46 +41,222 @@ def forecast_risk(attendance, marks, assignments):
     }
 
 
+# =========================================================
+# 2. COLUMN DETECTION
+# =========================================================
+
+def get_column(df, possible_names):
+
+    normalized_columns = {
+        str(col).strip().lower().replace("_", " ").replace("-", " "): col
+        for col in df.columns
+    }
+
+    for name in possible_names:
+        normalized_name = (
+            name.strip().lower().replace("_", " ").replace("-", " ")
+        )
+
+        if normalized_name in normalized_columns:
+            return normalized_columns[normalized_name]
+
+    return None
+
+
+# =========================================================
+# 3. RISK FORECASTING PAGE
+# =========================================================
+
 def render_risk_forecasting(students, apply_chart_theme, risk_colors):
 
-    st.title("🔮 Academic Risk Forecasting")
-    st.caption("Simulate future academic performance and identify students who may need early intervention.")
+    st.title("Academic Risk Forecasting")
 
-    st.info(
-        "This module simulates a possible academic decline using current attendance, "
-        "marks and assignment scores. It is a scenario-based forecast, not a real "
-        "future prediction."
+    st.caption(
+        "Explore simulated academic performance changes and identify "
+        "students who may require early intervention."
     )
 
-    student_id = st.selectbox(
+    st.info(
+        "This tool creates a simulated academic decline scenario using "
+        "attendance, marks and assignment performance. It is not a real "
+        "machine-learning prediction of future performance."
+    )
+
+    # -----------------------------------------------------
+    # Empty DataFrame protection
+    # -----------------------------------------------------
+
+    if students is None or students.empty:
+        st.warning("No student records are currently available.")
+        st.info("Add student records in Student Management to use forecasting.")
+        return
+
+    # -----------------------------------------------------
+    # Detect column names
+    # -----------------------------------------------------
+
+    id_col = get_column(
+        students,
+        ["Student ID", "student_id", "USN", "StudentID"]
+    )
+
+    name_col = get_column(
+        students,
+        ["Student", "Name", "Student Name"]
+    )
+
+    attendance_col = get_column(
+        students,
+        ["Attendance", "attendance"]
+    )
+
+    marks_col = get_column(
+        students,
+        ["Marks", "mark", "Score", "scores"]
+    )
+
+    assignments_col = get_column(
+        students,
+        ["Assignments", "Assignment", "assignment"]
+    )
+
+    # -----------------------------------------------------
+    # Validate required columns
+    # -----------------------------------------------------
+
+    missing_columns = []
+
+    if id_col is None:
+        missing_columns.append("Student ID")
+
+    if attendance_col is None:
+        missing_columns.append("Attendance")
+
+    if marks_col is None:
+        missing_columns.append("Marks")
+
+    if assignments_col is None:
+        missing_columns.append("Assignments")
+
+    if missing_columns:
+
+        st.error(
+            "Required student data columns are missing: "
+            + ", ".join(missing_columns)
+        )
+
+        st.write("Available columns:", list(students.columns))
+        return
+
+    # -----------------------------------------------------
+    # Prepare data
+    # -----------------------------------------------------
+
+    students = students.copy()
+
+    students[id_col] = students[id_col].astype(str)
+
+    # Remove records with missing academic data
+    students = students.dropna(
+        subset=[
+            id_col,
+            attendance_col,
+            marks_col,
+            assignments_col
+        ]
+    )
+
+    if students.empty:
+        st.warning("No complete student records available for forecasting.")
+        return
+
+    # -----------------------------------------------------
+    # Student selection
+    # -----------------------------------------------------
+
+    student_ids = students[id_col].astype(str).tolist()
+
+    selected_id = st.selectbox(
         "Select Student",
-        student_id_col = "student_id" if "student_id" in students.columns else "USN"
-        students[student_id_col].tolist()
+        student_ids,
         key="forecast_student"
     )
 
-    student = students[students["USN"] == student_id].iloc[0]
+    student = students[
+        students[id_col].astype(str) == str(selected_id)
+    ].iloc[0]
 
-    attendance = float(student["Attendance"])
-    marks = float(student["Marks"])
-    assignments = float(student["Assignments"])
+    # -----------------------------------------------------
+    # Student information
+    # -----------------------------------------------------
 
-    result = forecast_risk(attendance, marks, assignments)
+    if name_col is not None:
 
-    # Metrics
-    col1, col2, col3 = st.columns(3)
+        student_name = student[name_col]
 
-    col1.metric("Current Risk", result["current_risk"])
-    col2.metric("Forecast Risk", result["predicted_risk"])
+        st.markdown(
+            f"### Student: {student_name}"
+        )
+
+    st.caption(f"Student ID: {selected_id}")
+
+    # -----------------------------------------------------
+    # Academic values
+    # -----------------------------------------------------
+
+    attendance = float(student[attendance_col])
+    marks = float(student[marks_col])
+    assignments = float(student[assignments_col])
+
+    result = forecast_risk(
+        attendance,
+        marks,
+        assignments
+    )
+
+    # -----------------------------------------------------
+    # KPI metrics
+    # -----------------------------------------------------
+
+    st.subheader("Forecast Overview")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric(
+        "Current Risk",
+        result["current_risk"]
+    )
+
+    col2.metric(
+        "Forecast Risk",
+        result["predicted_risk"]
+    )
+
     col3.metric(
+        "Current Attendance",
+        f"{attendance:.1f}%"
+    )
+
+    col4.metric(
         "Forecast Attendance",
         f'{result["future_attendance"]:.1f}%'
     )
 
-    # Comparison chart
+    # -----------------------------------------------------
+    # Current vs forecast comparison
+    # -----------------------------------------------------
+
     comparison = pd.DataFrame({
-        "Metric": ["Attendance", "Marks", "Assignments"],
-        "Current": [attendance, marks, assignments],
+        "Metric": [
+            "Attendance",
+            "Marks",
+            "Assignments"
+        ],
+        "Current": [
+            attendance,
+            marks,
+            assignments
+        ],
         "Forecast": [
             result["future_attendance"],
             result["future_marks"],
@@ -84,70 +264,171 @@ def render_risk_forecasting(students, apply_chart_theme, risk_colors):
         ]
     })
 
+    st.subheader("Current vs Forecast Performance")
+
     fig = go.Figure()
 
-    fig.add_trace(go.Bar(
-        name="Current",
-        x=comparison["Metric"],
-        y=comparison["Current"]
-    ))
+    fig.add_trace(
+        go.Bar(
+            name="Current Performance",
+            x=comparison["Metric"],
+            y=comparison["Current"],
+            text=[
+                f"{value:.1f}%"
+                for value in comparison["Current"]
+            ],
+            textposition="outside"
+        )
+    )
 
-    fig.add_trace(go.Bar(
-        name="Forecast Scenario",
-        x=comparison["Metric"],
-        y=comparison["Forecast"]
-    ))
+    fig.add_trace(
+        go.Bar(
+            name="Forecast Scenario",
+            x=comparison["Metric"],
+            y=comparison["Forecast"],
+            text=[
+                f"{value:.1f}%"
+                for value in comparison["Forecast"]
+            ],
+            textposition="outside"
+        )
+    )
 
     fig.update_layout(
-        title="Current vs Forecast Academic Performance",
+        title="Academic Performance Scenario",
         barmode="group",
-        yaxis_title="Score (%)",
-        yaxis_range=[0, 100],
-        template="plotly_dark"
+        xaxis_title="Academic Indicator",
+        yaxis_title="Percentage",
+        yaxis_range=[0, 110],
+        height=430,
+        margin=dict(l=20, r=20, t=60, b=20)
     )
 
     apply_chart_theme(fig)
-    st.plotly_chart(fig, use_container_width=True)
 
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+    # -----------------------------------------------------
     # Forecast interpretation
-    st.subheader("📊 Forecast Analysis")
+    # -----------------------------------------------------
 
-    if result["predicted_risk"] == "Critical":
-        st.error("🚨 The student may enter a critical academic risk zone.")
-    elif result["predicted_risk"] == "High":
-        st.warning("⚠️ The student may experience high academic risk.")
-    elif result["predicted_risk"] == "Moderate":
-        st.info("📌 The student may experience moderate academic risk.")
+    st.subheader("Forecast Interpretation")
+
+    risk = result["predicted_risk"]
+
+    if risk == "Critical":
+
+        st.error(
+            "Critical scenario: the simulated academic decline "
+            "places this student in a critical risk category."
+        )
+
+    elif risk == "High":
+
+        st.warning(
+            "High-risk scenario: the student may require "
+            "immediate academic attention."
+        )
+
+    elif risk == "Moderate":
+
+        st.info(
+            "Moderate-risk scenario: monitoring and preventive "
+            "academic support are recommended."
+        )
+
     else:
-        st.success("✅ The student is projected to remain in a low-risk scenario.")
 
-    st.write("### 📉 Simulated Future Academic Indicators")
+        st.success(
+            "Low-risk scenario: the student is projected to "
+            "maintain comparatively stable academic performance."
+        )
 
-    st.write(f"**Attendance:** {attendance:.1f}% → {result['future_attendance']:.1f}%")
-    st.write(f"**Marks:** {marks:.1f}% → {result['future_marks']:.1f}%")
-    st.write(f"**Assignments:** {assignments:.1f}% → {result['future_assignments']:.1f}%")
+    # -----------------------------------------------------
+    # Academic indicator comparison
+    # -----------------------------------------------------
 
-    st.write("### 💡 Recommended Preventive Actions")
+    st.subheader("Simulated Academic Indicators")
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Attendance",
+        f'{result["future_attendance"]:.1f}%',
+        delta=f'{result["future_attendance"] - attendance:.1f}%'
+    )
+
+    col2.metric(
+        "Marks",
+        f'{result["future_marks"]:.1f}%',
+        delta=f'{result["future_marks"] - marks:.1f}%'
+    )
+
+    col3.metric(
+        "Assignments",
+        f'{result["future_assignments"]:.1f}%',
+        delta=f'{result["future_assignments"] - assignments:.1f}%'
+    )
+
+    # -----------------------------------------------------
+    # Preventive recommendations
+    # -----------------------------------------------------
+
+    st.subheader("Recommended Preventive Actions")
 
     recommendations = []
 
     if result["future_attendance"] < 75:
-        recommendations.append("Improve attendance through regular class participation.")
+
+        recommendations.append(
+            "Improve attendance through regular class participation "
+            "and attendance monitoring."
+        )
 
     if result["future_marks"] < 50:
-        recommendations.append("Schedule additional academic revision sessions.")
+
+        recommendations.append(
+            "Schedule academic revision sessions and subject-wise mentoring."
+        )
 
     if result["future_assignments"] < 50:
-        recommendations.append("Complete pending assignments and seek faculty support.")
+
+        recommendations.append(
+            "Complete pending assignments and arrange faculty guidance."
+        )
+
+    if result["predicted_risk"] in ["High", "Critical"]:
+
+        recommendations.append(
+            "Arrange an individual student counselling session "
+            "and create a structured recovery plan."
+        )
 
     if not recommendations:
-        recommendations.append("Maintain current academic consistency and monitor progress.")
+
+        recommendations.append(
+            "Maintain current academic consistency and continue "
+            "periodic monitoring."
+        )
 
     for recommendation in recommendations:
-        st.write(f"- {recommendation}")
+
+        st.markdown(
+            f"- {recommendation}"
+        )
+
+    # -----------------------------------------------------
+    # Forecast disclaimer
+    # -----------------------------------------------------
+
+    st.divider()
 
     st.caption(
-        "Forecast values are simulated by reducing current indicators. "
-        "They should not be interpreted as actual future student performance."
+        "Disclaimer: Forecast values are generated using a simulated "
+        "reduction in attendance, marks and assignments. These values "
+        "are intended for academic demonstration and decision support "
+        "only. They do not represent actual future student performance."
     )
-

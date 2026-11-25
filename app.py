@@ -29,8 +29,9 @@ st.set_page_config(
 
 DATA_PATH = Path("data/students.csv")
 
+
 # =========================================================
-# 2. LIGHT / DARK THEME
+# 2. LIGHT / DARK THEME - PROFESSIONAL BACKGROUND
 # =========================================================
 
 if "app_theme" not in st.session_state:
@@ -44,19 +45,31 @@ theme_choice = st.sidebar.radio(
     index=0 if st.session_state.app_theme == "Light" else 1
 )
 
-st.session_state.app_theme = "Light" if theme_choice == "☀️ Light" else "Dark"
+st.session_state.app_theme = (
+    "Light" if theme_choice == "☀️ Light" else "Dark"
+)
+
 is_dark = st.session_state.app_theme == "Dark"
 
 if is_dark:
-    bg_color = "#0F172A"
-    card_color = "#1E293B"
-    sidebar_color = "#111827"
+    bg_color = "#0B1120"
+    card_color = "#172235"
+    sidebar_color = "#101827"
     text_color = "#F1F5F9"
-    secondary_text = "#CBD5E1"
-    border_color = "#334155"
+    secondary_text = "#94A3B8"
+    border_color = "#25344B"
     chart_template = "plotly_dark"
+
+    background_css = """
+        background:
+        radial-gradient(ellipse at 15% 10%, rgba(37, 99, 235, 0.13), transparent 38%),
+        radial-gradient(ellipse at 85% 85%, rgba(14, 165, 233, 0.08), transparent 35%),
+        linear-gradient(135deg, #0B1120 0%, #0D1728 45%, #101B30 100%);
+        background-attachment: fixed;
+    """
+
 else:
-    bg_color = "#F4F7FB"
+    bg_color = "#F4F7FC"
     card_color = "#FFFFFF"
     sidebar_color = "#FFFFFF"
     text_color = "#1E293B"
@@ -64,18 +77,93 @@ else:
     border_color = "#E2E8F0"
     chart_template = "plotly_white"
 
+    background_css = """
+        background:
+        radial-gradient(ellipse at 10% 5%, rgba(59, 130, 246, 0.07), transparent 38%),
+        radial-gradient(ellipse at 90% 90%, rgba(14, 165, 233, 0.05), transparent 35%),
+        linear-gradient(135deg, #F4F7FC 0%, #EDF2F9 50%, #F8FAFC 100%);
+        background-attachment: fixed;
+    """
+
 st.markdown(f"""
 <style>
-.stApp {{background-color: {bg_color}; color: {text_color};}}
-[data-testid="stSidebar"] {{background-color: {sidebar_color}; border-right: 1px solid {border_color};}}
-[data-testid="stMetric"] {{background-color: {card_color}; border: 1px solid {border_color}; padding: 18px; border-radius: 14px;}}
-[data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{color: {text_color} !important;}}
-h1, h2, h3, h4 {{color: {text_color} !important;}}
-p, label {{color: {text_color};}}
-[data-testid="stDataFrame"] {{border: 1px solid {border_color}; border-radius: 10px;}}
-hr {{border-color: {border_color};}}
+
+/* MAIN BACKGROUND */
+.stApp {{
+    {background_css}
+    color: {text_color};
+}}
+
+/* MAIN CONTENT AREA */
+[data-testid="stMain"] {{
+    background: transparent !important;
+}}
+
+[data-testid="stMainBlockContainer"] {{
+    background: transparent !important;
+}}
+
+/* SIDEBAR */
+[data-testid="stSidebar"] {{
+    background-color: {sidebar_color} !important;
+    border-right: 1px solid {border_color};
+}}
+
+[data-testid="stSidebar"] > div:first-child {{
+    background-color: {sidebar_color};
+}}
+
+/* METRIC CARDS - KEEP EXISTING DESIGN */
+[data-testid="stMetric"] {{
+    background-color: {card_color};
+    border: 1px solid {border_color};
+    padding: 18px;
+    border-radius: 14px;
+}}
+
+/* METRIC TEXT */
+[data-testid="stMetricLabel"],
+[data-testid="stMetricValue"],
+[data-testid="stMetricDelta"] {{
+    color: {text_color} !important;
+}}
+
+/* HEADINGS */
+h1, h2, h3, h4 {{
+    color: {text_color} !important;
+}}
+
+/* BODY TEXT */
+p, label, span {{
+    color: inherit;
+}}
+
+/* DATA TABLE */
+[data-testid="stDataFrame"] {{
+    border: 1px solid {border_color};
+    border-radius: 10px;
+    overflow: hidden;
+}}
+
+/* DIVIDERS */
+hr {{
+    border-color: {border_color} !important;
+}}
+
+/* INPUTS */
+[data-baseweb="input"],
+[data-baseweb="select"] {{
+    border-radius: 8px;
+}}
+
+/* PRESERVE PAGE CONTENT */
+.block-container {{
+    background: transparent !important;
+}}
+
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # =========================================================

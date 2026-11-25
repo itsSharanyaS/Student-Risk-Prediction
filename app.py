@@ -89,10 +89,9 @@ st.markdown(f"""
 <style>
 
 /* MAIN BACKGROUND */
-.stApp {{
-    {background_css}
-    color: {text_color};
-}}
+.stApp {
+    background: #0B1F3A !important;
+}
 
 /* MAIN CONTENT AREA */
 [data-testid="stMain"] {{

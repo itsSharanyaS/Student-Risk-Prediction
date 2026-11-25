@@ -29,137 +29,43 @@ st.set_page_config(
 
 DATA_PATH = Path("data/students.csv")
 
-
 # =========================================================
-# 2. LIGHT / DARK THEME - PROFESSIONAL BACKGROUND
+# 2. SOLID NAVY BLUE THEME
 # =========================================================
 
-if "app_theme" not in st.session_state:
-    st.session_state.app_theme = "Light"
+bg_color = "#0B1F3A"
+card_color = "#142D4E"
+sidebar_color = "#0B1F3A"
+text_color = "#F1F5F9"
+secondary_text = "#CBD5E1"
+border_color = "#294563"
+chart_template = "plotly_dark"
 
-st.sidebar.markdown("## 🎨 Appearance")
-
-theme_choice = st.sidebar.radio(
-    "Select theme",
-    ["☀️ Light", "🌙 Dark"],
-    index=0 if st.session_state.app_theme == "Light" else 1
-)
-
-st.session_state.app_theme = (
-    "Light" if theme_choice == "☀️ Light" else "Dark"
-)
-
-is_dark = st.session_state.app_theme == "Dark"
-
-if is_dark:
-    bg_color = "#0B1120"
-    card_color = "#172235"
-    sidebar_color = "#101827"
-    text_color = "#F1F5F9"
-    secondary_text = "#94A3B8"
-    border_color = "#25344B"
-    chart_template = "plotly_dark"
-
-    background_css = """
-        background:
-        radial-gradient(ellipse at 15% 10%, rgba(37, 99, 235, 0.13), transparent 38%),
-        radial-gradient(ellipse at 85% 85%, rgba(14, 165, 233, 0.08), transparent 35%),
-        linear-gradient(135deg, #0B1120 0%, #0D1728 45%, #101B30 100%);
-        background-attachment: fixed;
-    """
-
-else:
-    bg_color = "#F4F7FC"
-    card_color = "#FFFFFF"
-    sidebar_color = "#FFFFFF"
-    text_color = "#1E293B"
-    secondary_text = "#64748B"
-    border_color = "#E2E8F0"
-    chart_template = "plotly_white"
-
-    background_css = """
-        background:
-        radial-gradient(ellipse at 10% 5%, rgba(59, 130, 246, 0.07), transparent 38%),
-        radial-gradient(ellipse at 90% 90%, rgba(14, 165, 233, 0.05), transparent 35%),
-        linear-gradient(135deg, #F4F7FC 0%, #EDF2F9 50%, #F8FAFC 100%);
-        background-attachment: fixed;
-    """
-
-st.markdown(f"""
+st.markdown("""
 <style>
-
-/* MAIN BACKGROUND */
-.stApp {
-    background: #0B1F3A !important;
+.stApp, [data-testid="stMain"], [data-testid="stMainBlockContainer"],
+.main, .block-container {
+    background-color: #0B1F3A !important;
 }
-
-/* MAIN CONTENT AREA */
-[data-testid="stMain"] {{
-    background: transparent !important;
-}}
-
-[data-testid="stMainBlockContainer"] {{
-    background: transparent !important;
-}}
-
-/* SIDEBAR */
-[data-testid="stSidebar"] {{
-    background-color: {sidebar_color} !important;
-    border-right: 1px solid {border_color};
-}}
-
-[data-testid="stSidebar"] > div:first-child {{
-    background-color: {sidebar_color};
-}}
-
-/* METRIC CARDS - KEEP EXISTING DESIGN */
-[data-testid="stMetric"] {{
-    background-color: {card_color};
-    border: 1px solid {border_color};
-    padding: 18px;
-    border-radius: 14px;
-}}
-
-/* METRIC TEXT */
-[data-testid="stMetricLabel"],
-[data-testid="stMetricValue"],
-[data-testid="stMetricDelta"] {{
-    color: {text_color} !important;
-}}
-
-/* HEADINGS */
-h1, h2, h3, h4 {{
-    color: {text_color} !important;
-}}
-
-/* BODY TEXT */
-p, label, span {{
-    color: inherit;
-}}
-
-/* DATA TABLE */
-[data-testid="stDataFrame"] {{
-    border: 1px solid {border_color};
-    border-radius: 10px;
-    overflow: hidden;
-}}
-
-/* DIVIDERS */
-hr {{
-    border-color: {border_color} !important;
-}}
-
-/* INPUTS */
-[data-baseweb="input"],
-[data-baseweb="select"] {{
-    border-radius: 8px;
-}}
-
-/* PRESERVE PAGE CONTENT */
-.block-container {{
-    background: transparent !important;
-}}
-
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div {
+    background-color: #0B1F3A !important;
+    border-right: 1px solid #294563 !important;
+}
+[data-testid="stMetric"] {
+    background-color: #142D4E !important;
+    border: 1px solid #294563 !important;
+    padding: 18px !important;
+    border-radius: 14px !important;
+}
+[data-testid="stMetricLabel"], [data-testid="stMetricValue"],
+[data-testid="stMetricDelta"], h1, h2, h3, h4, p, label {
+    color: #F1F5F9 !important;
+}
+[data-testid="stDataFrame"] {
+    border: 1px solid #294563 !important;
+    border-radius: 10px !important;
+}
+hr { border-color: #294563 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -377,51 +283,59 @@ st.sidebar.caption("Academic monitoring and risk analysis platform")
     
 role_pages = {
     "Admin": [
-        "Dashboard",
-        "Student Management",
-        "Risk Prediction Center",
-        "Explainable AI",
-        "Early Warning Center",
-        "Personalized Recovery Planner",
-        "Recovery Success Tracker",
-        "Advanced Analytics",
-        "Reports"
+        "Student Management", "Risk Prediction Center", "Explainable AI",
+        "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
+        "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
+        "AI Recovery Pathway", "Faculty / Mentor Dashboard",
+        "Intervention Effectiveness Analyzer", "Academic Report Generator",
+        "Risk Analytics", "Early Warning Center", "Personalized Recovery Planner",
+        "Recovery Success Tracker", "Recovery Plans", "Database Management", "About Project"
     ],
-
     "Faculty": [
-        "Dashboard",
-        "Student Management",
-        "Risk Prediction Center",
-        "Explainable AI",
-        "Early Warning Center",
-        "Personalized Recovery Planner",
-        "Recovery Success Tracker",
-        "Advanced Analytics",
-        "Reports"
+        "Student Management", "Risk Prediction Center", "Explainable AI",
+        "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
+        "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
+        "AI Recovery Pathway", "Faculty / Mentor Dashboard",
+        "Intervention Effectiveness Analyzer", "Academic Report Generator",
+        "Risk Analytics", "Early Warning Center", "Personalized Recovery Planner",
+        "Recovery Success Tracker", "Recovery Plans", "About Project"
     ],
-
     "Mentor": [
-        "Dashboard",
-        "Student Management",
-        "Risk Prediction Center",
-        "Explainable AI",
-        "Early Warning Center",
-        "Personalized Recovery Planner",
-        "Recovery Success Tracker",
-        "Advanced Analytics",
-        "Reports"
+        "Student Management", "Risk Prediction Center", "Explainable AI",
+        "Student Risk Trend Analyzer", "AI Recovery Pathway",
+        "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
+        "Academic Report Generator", "Early Warning Center",
+        "Personalized Recovery Planner", "Recovery Success Tracker",
+        "Recovery Plans", "About Project"
     ]
 }
-
 available_pages = role_pages.get(current_role, role_pages["Mentor"])
+
 
 st.sidebar.markdown(f"### 👤 {current_username}")
 st.sidebar.caption(f"Role: {current_role}")
-
 if st.sidebar.button("🚪 Logout", use_container_width=True):
     logout_user()
 
-page = st.sidebar.radio("Navigation", available_pages)
+# Dashboard is the post-login landing page and is not a navigation option.
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Dashboard"
+if "nav_select" not in st.session_state:
+    st.session_state.nav_select = "Choose a module"
+
+if st.sidebar.button("🏠 Home", use_container_width=True):
+    st.session_state.current_page = "Dashboard"
+    st.session_state.nav_select = "Choose a module"
+    st.rerun()
+
+selected_module = st.sidebar.selectbox(
+    "Open a feature",
+    ["Choose a module"] + available_pages,
+    key="nav_select"
+)
+if selected_module != "Choose a module":
+    st.session_state.current_page = selected_module
+page = st.session_state.current_page
 
 st.sidebar.divider()
 st.sidebar.markdown("### Risk Legend")
@@ -447,7 +361,7 @@ def apply_chart_theme(fig, height=400):
 
 
 # Defensive role/page access check before rendering any page route.
-if page not in available_pages:
+if page != "Dashboard" and page not in available_pages:
     st.error("You do not have permission to access this page.")
     st.stop()
 
@@ -1303,7 +1217,7 @@ elif page == "About Project":
     - Smart Early Warning Engine
     - Recovery plans
     - CSV data export
-    - Light and dark themes
+    - Solid navy-blue interface theme
 
     ### Academic Indicators
 

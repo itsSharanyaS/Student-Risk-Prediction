@@ -1,41 +1,29 @@
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 
 
 def render_subject_intelligence(students):
 
     st.title("📊 Advanced Academic Analytics")
-    st.caption(
-        "Explore academic performance, attendance patterns, "
-        "risk distribution, and semester-level insights."
-    )
+    st.caption("Academic performance, attendance, risk and semester insights")
 
     if students is None or students.empty:
-        st.warning("No student data is available for analytics.")
+        st.warning("No student data available.")
         return
 
     df = students.copy()
 
-    # --------------------------------------------------
-    # Validate and prepare data
-    # --------------------------------------------------
-    required_columns = [
-        "Student", "Student ID", "Department", "Semester",
+    required = [
+        "Student ID", "Student", "Department", "Semester",
         "Attendance", "Marks", "Assignments", "Risk"
     ]
 
-    missing_columns = [
-        col for col in required_columns if col not in df.columns
-    ]
+    missing = [c for c in required if c not in df.columns]
 
-    if missing_columns:
-        st.error(
-            "Required data columns are missing: "
-            + ", ".join(missing_columns)
-        )
+    if missing:
+        st.error("Missing columns: " + ", ".join(missing))
         return
 
     for col in ["Attendance", "Marks", "Assignments", "Semester"]:
@@ -46,10 +34,9 @@ def render_subject_intelligence(students):
     )
 
     if df.empty:
-        st.warning("No valid academic records are available.")
+        st.warning("No valid student records found.")
         return
 
-    # Calculate risk score if it does not exist
     if "Risk Score" not in df.columns:
         df["Risk Score"] = (
             (100 - df["Attendance"]) * 0.4
@@ -57,124 +44,117 @@ def render_subject_intelligence(students):
             + (100 - df["Assignments"]) * 0.2
         ).clip(0, 100)
 
-    # --------------------------------------------------
-    # Sidebar filters
-    # --------------------------------------------------
+    # ============================
+    # FILTERS
+    # ============================
     st.sidebar.subheader("🔎 Analytics Filters")
 
     departments = ["All"] + sorted(
         df["Department"].dropna().astype(str).unique().tolist()
     )
 
-    selected_department = st.sidebar.selectbox(
+    department = st.sidebar.selectbox(
         "Department",
         departments,
-        key="subject_analytics_department"
+        key="advanced_department"
     )
 
     semesters = sorted(df["Semester"].dropna().unique().tolist())
 
-    selected_semester = st.sidebar.selectbox(
+    semester = st.sidebar.selectbox(
         "Semester",
         ["All"] + semesters,
-        key="subject_analytics_semester"
+        key="advanced_semester"
     )
 
     risks = ["All"] + sorted(
         df["Risk"].dropna().astype(str).unique().tolist()
     )
 
-    selected_risk = st.sidebar.selectbox(
+    risk = st.sidebar.selectbox(
         "Risk Level",
         risks,
-        key="subject_analytics_risk"
+        key="advanced_risk"
     )
 
     filtered = df.copy()
 
-    if selected_department != "All":
+    if department != "All":
         filtered = filtered[
-            filtered["Department"].astype(str) == selected_department
+            filtered["Department"].astype(str) == department
         ]
 
-    if selected_semester != "All":
-        filtered = filtered[
-            filtered["Semester"] == selected_semester
-        ]
+    if semester != "All":
+        filtered = filtered[filtered["Semester"] == semester]
 
-    if selected_risk != "All":
-        filtered = filtered[
-            filtered["Risk"] == selected_risk
-        ]
+    if risk != "All":
+        filtered = filtered[filtered["Risk"] == risk]
 
     if filtered.empty:
-        st.warning("No students match the selected filters.")
+        st.warning("No students match your selected filters.")
         return
 
-    # --------------------------------------------------
-    # KPI metrics
-    # --------------------------------------------------
+    # ============================
+    # OVERVIEW
+    # ============================
     total = len(filtered)
     avg_attendance = filtered["Attendance"].mean()
     avg_marks = filtered["Marks"].mean()
-    avg_assignments = filtered["Assignments'].mean()
-
-    # Correct column name
     avg_assignments = filtered["Assignments"].mean()
 
     at_risk = filtered["Risk"].isin(["High", "Critical"]).sum()
-    at_risk_pct = (at_risk / total * 100) if total else 0
+    at_risk_percentage = at_risk / total * 100 if total else 0
 
     st.divider()
     st.subheader("📌 Academic Overview")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    c1, c2, c3, c4, c5 = st.columns(5)
 
-    col1.metric("Total Students", total)
-    col2.metric("Avg Attendance", f"{avg_attendance:.1f}%")
-    col3.metric("Avg Marks", f"{avg_marks:.1f}%")
-    col4.metric("Avg Assignments", f"{avg_assignments:.1f}%")
-    col5.metric("At-Risk Students", at_risk, f"{at_risk_pct:.1f}%")
+    c1.metric("Total Students", total)
+    c2.metric("Average Attendance", f"{avg_attendance:.1f}%")
+    c3.metric("Average Marks", f"{avg_marks:.1f}%")
+    c4.metric("Average Assignments", f"{avg_assignments:.1f}%")
+    c5.metric("Students At Risk", at_risk, f"{at_risk_percentage:.1f}%")
 
-    # --------------------------------------------------
-    # Performance distribution
-    # --------------------------------------------------
+    # ============================
+    # PERFORMANCE DISTRIBUTION
+    # ============================
     st.divider()
     st.subheader("📈 Academic Performance Distribution")
 
-    metric_choice = st.selectbox(
-        "Choose academic indicator",
+    metric = st.selectbox(
+        "Select Indicator",
         ["Attendance", "Marks", "Assignments"],
-        key="subject_analytics_metric"
+        key="advanced_metric"
     )
 
-    col1, col2 = st.columns(2)
+    c1, c2 = st.columns(2)
 
-    with col1:
+    with c1:
         fig = px.histogram(
             filtered,
-            x=metric_choice,
+            x=metric,
             nbins=15,
-            title=f"{metric_choice} Distribution",
-            marginal="box"
+            marginal="box",
+            title=f"{metric} Distribution"
         )
-        fig.update_layout(yaxis_title="Number of Students")
         st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
+    with c2:
         fig = px.box(
             filtered,
-            y=metric_choice,
+            x="Risk",
+            y=metric,
             color="Risk",
-            title=f"{metric_choice} by Risk Level"
+            title=f"{metric} by Risk Level"
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    # --------------------------------------------------
-    # Attendance vs marks
-    # --------------------------------------------------
+    # ============================
+    # ATTENDANCE VS MARKS
+    # ============================
     st.divider()
-    st.subheader("🎯 Attendance vs Academic Performance")
+    st.subheader("🎯 Attendance vs Marks")
 
     fig = px.scatter(
         filtered,
@@ -184,31 +164,21 @@ def render_subject_intelligence(students):
         size="Assignments",
         hover_name="Student",
         hover_data=["Student ID", "Department", "Semester"],
-        title="Attendance and Marks Relationship"
-    )
-
-    fig.update_layout(
-        xaxis_title="Attendance (%)",
-        yaxis_title="Marks (%)"
+        title="Attendance and Academic Performance"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # --------------------------------------------------
-    # Risk analysis
-    # --------------------------------------------------
+    # ============================
+    # RISK ANALYSIS
+    # ============================
     st.divider()
     st.subheader("🚨 Risk Analysis")
 
-    col1, col2 = st.columns(2)
+    c1, c2 = st.columns(2)
 
-    with col1:
-        risk_counts = (
-            filtered["Risk"]
-            .value_counts()
-            .reset_index()
-        )
-
+    with c1:
+        risk_counts = filtered["Risk"].value_counts().reset_index()
         risk_counts.columns = ["Risk Level", "Students"]
 
         fig = px.pie(
@@ -216,13 +186,13 @@ def render_subject_intelligence(students):
             names="Risk Level",
             values="Students",
             hole=0.45,
-            title="Student Risk Distribution"
+            title="Risk Distribution"
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
-        risk_performance = (
+    with c2:
+        risk_summary = (
             filtered.groupby("Risk")[
                 ["Attendance", "Marks", "Assignments"]
             ]
@@ -230,26 +200,26 @@ def render_subject_intelligence(students):
             .reset_index()
         )
 
-        risk_performance = risk_performance.melt(
+        risk_summary = risk_summary.melt(
             id_vars="Risk",
             var_name="Indicator",
             value_name="Average"
         )
 
         fig = px.bar(
-            risk_performance,
+            risk_summary,
             x="Risk",
             y="Average",
             color="Indicator",
             barmode="group",
-            title="Academic Indicators by Risk Level"
+            title="Performance by Risk Level"
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # --------------------------------------------------
-    # Semester analytics
-    # --------------------------------------------------
+    # ============================
+    # SEMESTER ANALYSIS
+    # ============================
     st.divider()
     st.subheader("🎓 Semester Performance Analysis")
 
@@ -269,19 +239,23 @@ def render_subject_intelligence(students):
         .sort_values("Semester")
     )
 
-    col1, col2 = st.columns(2)
+    c1, c2 = st.columns(2)
 
-    with col1:
+    with c1:
         fig = px.line(
             semester_summary,
             x="Semester",
-            y=["Average_Attendance", "Average_Marks", "Average_Assignments"],
+            y=[
+                "Average_Attendance",
+                "Average_Marks",
+                "Average_Assignments"
+            ],
             markers=True,
-            title="Semester-wise Academic Performance"
+            title="Semester Academic Performance"
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
+    with c2:
         fig = px.bar(
             semester_summary,
             x="Semester",
@@ -297,9 +271,9 @@ def render_subject_intelligence(students):
         hide_index=True
     )
 
-    # --------------------------------------------------
-    # Department analysis
-    # --------------------------------------------------
+    # ============================
+    # DEPARTMENT ANALYSIS
+    # ============================
     if filtered["Department"].nunique() > 1:
 
         st.divider()
@@ -321,7 +295,7 @@ def render_subject_intelligence(students):
             x="Department",
             y=["Attendance", "Marks", "Assignments"],
             barmode="group",
-            title="Department-wise Performance Comparison"
+            title="Department-wise Performance"
         )
 
         st.plotly_chart(fig, use_container_width=True)
@@ -332,29 +306,29 @@ def render_subject_intelligence(students):
             hide_index=True
         )
 
-    # --------------------------------------------------
-    # Correlation analysis
-    # --------------------------------------------------
+    # ============================
+    # CORRELATION
+    # ============================
     st.divider()
     st.subheader("🔗 Academic Indicator Correlation")
 
-    correlation_data = filtered[
+    correlation = filtered[
         ["Attendance", "Marks", "Assignments"]
     ].corr()
 
     fig = px.imshow(
-        correlation_data,
+        correlation,
         text_auto=".2f",
         aspect="auto",
-        color_continuous_scale="RdBu",
-        title="Correlation Between Academic Indicators"
+        title="Correlation Matrix",
+        color_continuous_scale="RdBu"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # --------------------------------------------------
-    # Student performance ranking
-    # --------------------------------------------------
+    # ============================
+    # STUDENT RANKING
+    # ============================
     st.divider()
     st.subheader("🏆 Student Performance Ranking")
 
@@ -363,11 +337,7 @@ def render_subject_intelligence(students):
         ascending=False
     ).copy()
 
-    ranking.insert(
-        0,
-        "Rank",
-        range(1, len(ranking) + 1)
-    )
+    ranking.insert(0, "Rank", range(1, len(ranking) + 1))
 
     st.dataframe(
         ranking[
@@ -381,20 +351,19 @@ def render_subject_intelligence(students):
         hide_index=True
     )
 
-    # --------------------------------------------------
-    # Download filtered analytics
-    # --------------------------------------------------
+    # ============================
+    # DOWNLOAD
+    # ============================
     st.divider()
-    st.subheader("📥 Export Analytics Data")
+    st.subheader("📥 Export Analytics")
 
     csv_data = filtered.to_csv(index=False).encode("utf-8")
 
     st.download_button(
-        label="Download Filtered Student Analytics",
+        "Download Analytics CSV",
         data=csv_data,
         file_name="advanced_academic_analytics.csv",
         mime="text/csv"
     )
 
     st.success("Advanced Analytics loaded successfully.")
-

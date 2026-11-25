@@ -41,12 +41,13 @@ if "app_theme" not in st.session_state:
 
 is_dark = st.session_state.app_theme == "Dark"
 bg_color = NAVY if is_dark else WHITE
-card_color = NAVY if is_dark else WHITE
+card_color = "#12243A" if is_dark else WHITE
 sidebar_color = NAVY
 text_color = WHITE if is_dark else NAVY
-secondary_text = text_color
-border_color = WHITE if is_dark else NAVY
-chart_template = "plotly_white"
+secondary_text = "#B8C4D6" if is_dark else "#53657D"
+border_color = "#33465F" if is_dark else "#D7E0EA"
+control_bg = "#142B45" if is_dark else WHITE
+chart_template = "plotly_dark" if is_dark else "plotly_white"
 
 st.markdown(f"""
 <style>
@@ -72,15 +73,15 @@ st.markdown(f"""
 [data-testid="stDataFrame"], [data-testid="stTable"] {{ border: 1px solid {border_color} !important; border-radius: 8px !important; background: {card_color} !important; }}
 /* Inputs/select boxes stay readable */
 [data-testid="stMain"] input, [data-testid="stMain"] textarea, [data-testid="stMain"] select,
-[data-testid="stMain"] [data-baseweb="select"] > div {{ background: {WHITE} !important; color: {NAVY} !important; border: 1px solid {NAVY} !important; }}
+[data-testid="stMain"] [data-baseweb="select"] > div {{ background: {control_bg} !important; color: {text_color} !important; border: 1px solid {border_color} !important; }}
 [data-testid="stMain"] input::placeholder, [data-testid="stMain"] textarea::placeholder {{ color: {NAVY} !important; opacity: 1 !important; }}
 [data-baseweb="popover"], [data-baseweb="menu"], [data-baseweb="select"] ul,
-[role="listbox"], [role="option"] {{ background: {WHITE} !important; color: {NAVY} !important; }}
+[role="listbox"], [role="option"] {{ background: {control_bg} !important; color: {text_color} !important; }}
 [data-baseweb="option"] *, [role="option"] * {{ color: {NAVY} !important; }}
 [data-testid="stSidebar"] input, [data-testid="stSidebar"] textarea,
-[data-testid="stSidebar"] [data-baseweb="select"] > div {{ background: {WHITE} !important; color: {NAVY} !important; border: 1px solid {WHITE} !important; }}
+[data-testid="stSidebar"] [data-baseweb="select"] > div {{ background: {control_bg} !important; color: {text_color} !important; border: 1px solid {WHITE} !important; }}
 [data-testid="stSidebar"] [data-baseweb="popover"], [data-testid="stSidebar"] [role="listbox"],
-[data-testid="stSidebar"] [role="option"] {{ background: {WHITE} !important; color: {NAVY} !important; }}
+[data-testid="stSidebar"] [role="option"] {{ background: {control_bg} !important; color: {text_color} !important; }}
 [data-testid="stSidebar"] [role="option"] * {{ color: {NAVY} !important; }}
 /* Buttons */
 .stButton button, [data-testid="stDownloadButton"] button {{ background: {NAVY} !important; color: {WHITE} !important; border: 1px solid {NAVY} !important; border-radius: 8px !important; font-weight: 600 !important; }}
@@ -105,8 +106,8 @@ current_username = get_username()
 
 # Set Dashboard as the landing page once per authenticated session.
 if not st.session_state.get("_post_login_landing_set", False):
-    st.session_state.current_page = "Dashboard"
-    st.session_state.sidebar_page = "Dashboard"
+    st.session_state.current_page = "Smart Dashboard"
+    st.session_state.sidebar_page = "Smart Dashboard"
     st.session_state.nav_select = "Choose a module"
     st.session_state._post_login_landing_set = True
 
@@ -115,9 +116,9 @@ if not st.session_state.get("_post_login_landing_set", False):
 # =========================================================
 
 risk_colors = {
-    "Low": "#16A34A",
+    "Low": "#0D9488",
     "Moderate": "#D97706",
-    "High": "#EA580C",
+    "High": "#F97316",
     "Critical": "#DC2626"
 }
 
@@ -302,96 +303,72 @@ average_marks = students["Marks"].mean()
 average_assignments = students["Assignments"].mean()
 
 # =========================================================
-# 7. SIDEBAR NAVIGATION + THEME CONTROL
+# 7. CLEAN SIDEBAR: THEME, 9 MODULES, LOGOUT
 # =========================================================
 
-st.sidebar.divider()
-st.sidebar.markdown("## 🎨 Appearance")
-st.sidebar.radio(
-    "Theme",
-    options=["Light", "Dark"],
-    horizontal=True,
-    key="app_theme",
-    label_visibility="collapsed"
-)
-# If the theme selection changed, rerun so the page CSS updates immediately.
-# Streamlit reruns on radio interaction automatically.
+MAIN_MODULES = [
+    "Smart Dashboard", "Student Management", "Risk Prediction Center",
+    "Explainable AI", "Early Warning Center", "Recovery Planner",
+    "Recovery Success Tracker", "Advanced Analytics", "Reports"
+]
 
+st.sidebar.markdown("### Appearance")
+st.sidebar.radio("Theme", ["Light", "Dark"], horizontal=True, key="app_theme", label_visibility="collapsed")
 st.sidebar.divider()
-st.sidebar.title("🎓 Student Intelligence")
-st.sidebar.caption("Academic monitoring and risk analysis platform")
-
-role_pages = {
-    "Admin": [
-        "Student Management", "Risk Prediction Center", "Explainable AI",
-        "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
-        "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
-        "AI Recovery Pathway", "Faculty / Mentor Dashboard",
-        "Intervention Effectiveness Analyzer", "Academic Report Generator",
-        "Risk Analytics", "Early Warning Center", "Personalized Recovery Planner",
-        "Recovery Success Tracker", "Recovery Plans", "Database Management", "About Project"
-    ],
-    "Faculty": [
-        "Student Management", "Risk Prediction Center", "Explainable AI",
-        "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
-        "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
-        "AI Recovery Pathway", "Faculty / Mentor Dashboard",
-        "Intervention Effectiveness Analyzer", "Academic Report Generator",
-        "Risk Analytics", "Early Warning Center", "Personalized Recovery Planner",
-        "Recovery Success Tracker", "Recovery Plans", "About Project"
-    ],
-    "Mentor": [
-        "Student Management", "Risk Prediction Center", "Explainable AI",
-        "Student Risk Trend Analyzer", "AI Recovery Pathway",
-        "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
-        "Academic Report Generator", "Early Warning Center",
-        "Personalized Recovery Planner", "Recovery Success Tracker",
-        "Recovery Plans", "About Project"
-    ]
+st.sidebar.markdown("### Dashboard Features")
+module_icons = {
+    "Smart Dashboard": "▦", "Student Management": "♙", "Risk Prediction Center": "◎",
+    "Explainable AI": "◈", "Early Warning Center": "⚑", "Recovery Planner": "↗",
+    "Recovery Success Tracker": "✓", "Advanced Analytics": "⌁", "Reports": "▤"
 }
-available_pages = role_pages.get(current_role, role_pages["Mentor"])
+module_labels = [f"{module_icons[m]}  {m}" for m in MAIN_MODULES]
+label_to_module = dict(zip(module_labels, MAIN_MODULES))
+if "sidebar_page" not in st.session_state or st.session_state.sidebar_page not in MAIN_MODULES:
+    st.session_state.sidebar_page = "Smart Dashboard"
+selected_label = st.sidebar.radio(
+    "Choose module", module_labels,
+    index=MAIN_MODULES.index(st.session_state.sidebar_page),
+    key="main_module_nav", label_visibility="collapsed"
+)
+selected_module = label_to_module[selected_label]
+st.session_state.sidebar_page = selected_module
+st.session_state.current_page = selected_module
 
-
-st.sidebar.markdown(f"### 👤 {current_username}")
-st.sidebar.caption(f"Role: {current_role}")
-if st.sidebar.button("🚪 Logout", use_container_width=True):
+st.sidebar.divider()
+if st.sidebar.button("Logout", use_container_width=True):
     st.session_state._post_login_landing_set = False
     st.session_state.pop("sidebar_page", None)
+    st.session_state.pop("main_module_nav", None)
     logout_user()
     st.rerun()
 
+# Map the nine primary modules to the existing page handlers, preserving the app's logic.
+page = selected_module
+if page == "Smart Dashboard":
+    page = "Dashboard"
+elif page == "Recovery Planner":
+    page = st.selectbox("Recovery workspace", [
+        "Personalized Recovery Planner", "Recovery Plans", "AI Recovery Pathway"
+    ], key="recovery_workspace")
+elif page == "Advanced Analytics":
+    page = st.selectbox("Analytics workspace", [
+        "Risk Analytics", "Risk Forecasting", "What-If Simulator",
+        "Student Risk Trend Analyzer", "Subject-Level Intelligence",
+        "Student Clustering", "Anomaly Detection", "Faculty / Mentor Dashboard",
+        "Intervention Effectiveness Analyzer"
+    ], key="analytics_workspace")
+elif page == "Reports":
+    page = "Academic Report Generator"
 
-# Dashboard is the landing page and is now listed alongside the modules.
-sidebar_pages = ["Dashboard"] + available_pages
-if "current_page" not in st.session_state:
-    st.session_state.current_page = "Dashboard"
-if "sidebar_page" not in st.session_state:
-    st.session_state.sidebar_page = st.session_state.current_page if st.session_state.current_page in sidebar_pages else "Dashboard"
-
-# Keep navigation state aligned if the landing page was reset after login.
-if st.session_state.current_page not in sidebar_pages:
-    st.session_state.current_page = "Dashboard"
-    st.session_state.sidebar_page = "Dashboard"
-
-st.sidebar.markdown("### 📂 Features")
-selected_page = st.sidebar.radio(
-    "Navigate to a page",
-    options=sidebar_pages,
-    key="sidebar_page",
-    label_visibility="collapsed"
-)
-st.session_state.current_page = selected_page
-page = selected_page
-
-st.sidebar.divider()
-st.sidebar.markdown("### Risk Legend")
-st.sidebar.markdown("🟢 Low")
-st.sidebar.markdown("🟡 Moderate")
-st.sidebar.markdown("🟠 High")
-st.sidebar.markdown("🔴 Critical")
-st.sidebar.divider()
-st.sidebar.metric("Students Monitored", total_students)
-st.sidebar.caption("Student Risk Prediction System")
+available_pages = [
+    "Dashboard", "Student Management", "Risk Prediction Center", "Explainable AI",
+    "Early Warning Center", "Personalized Recovery Planner", "Recovery Plans",
+    "AI Recovery Pathway", "Recovery Success Tracker", "Risk Analytics",
+    "Risk Forecasting", "What-If Simulator", "Student Risk Trend Analyzer",
+    "Subject-Level Intelligence", "Student Clustering", "Anomaly Detection",
+    "Faculty / Mentor Dashboard", "Intervention Effectiveness Analyzer",
+    "Academic Report Generator"
+]
 
 
 def apply_chart_theme(fig, height=400):
@@ -407,8 +384,8 @@ def apply_chart_theme(fig, height=400):
 
 
 # Defensive role/page access check before rendering any page route.
-if page != "Dashboard" and page not in available_pages:
-    st.error("You do not have permission to access this page.")
+if page not in available_pages:
+    st.error("This workspace is not available.")
     st.stop()
 
 

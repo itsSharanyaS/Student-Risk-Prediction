@@ -33,39 +33,104 @@ DATA_PATH = Path("data/students.csv")
 # 2. SOLID NAVY BLUE THEME
 # =========================================================
 
-bg_color = "#0B1F3A"
-card_color = "#142D4E"
+bg_color = "#FFFFFF"
+card_color = "#FFFFFF"
 sidebar_color = "#0B1F3A"
-text_color = "#F1F5F9"
-secondary_text = "#CBD5E1"
-border_color = "#294563"
-chart_template = "plotly_dark"
+text_color = "#0B1F3A"
+secondary_text = "#0B1F3A"
+border_color = "#0B1F3A"
+chart_template = "plotly_white"
 
 st.markdown("""
 <style>
+/* STRICT NAVY BLUE + WHITE THEME */
+:root {
+    --navy: #0B1F3A;
+    --white: #FFFFFF;
+}
 .stApp, [data-testid="stMain"], [data-testid="stMainBlockContainer"],
-.main, .block-container {
-    background-color: #0B1F3A !important;
+.main, .block-container, [data-testid="stMainBlockContainer"] {
+    background: #FFFFFF !important;
+    color: #0B1F3A !important;
 }
+/* Navy sidebar with readable white text */
 [data-testid="stSidebar"], [data-testid="stSidebar"] > div {
-    background-color: #0B1F3A !important;
-    border-right: 1px solid #294563 !important;
+    background: #0B1F3A !important;
+    border-right: 1px solid #0B1F3A !important;
 }
+[data-testid="stSidebar"] * { color: #FFFFFF !important; }
+/* Main content typography */
+[data-testid="stMain"] h1, [data-testid="stMain"] h2,
+[data-testid="stMain"] h3, [data-testid="stMain"] h4,
+[data-testid="stMain"] p, [data-testid="stMain"] label,
+[data-testid="stMain"] span, [data-testid="stMain"] li,
+[data-testid="stMain"] [data-testid="stWidgetLabel"],
+[data-testid="stMain"] [data-testid="stMetricLabel"],
+[data-testid="stMain"] [data-testid="stMetricValue"] {
+    color: #0B1F3A !important;
+}
+/* White KPI cards with navy borders */
 [data-testid="stMetric"] {
-    background-color: #142D4E !important;
-    border: 1px solid #294563 !important;
-    padding: 18px !important;
-    border-radius: 14px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #0B1F3A !important;
+    padding: 16px 18px !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
 }
 [data-testid="stMetricLabel"], [data-testid="stMetricValue"],
-[data-testid="stMetricDelta"], h1, h2, h3, h4, p, label {
-    color: #F1F5F9 !important;
+[data-testid="stMetricDelta"] { color: #0B1F3A !important; }
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    border: 1px solid #0B1F3A !important;
+    border-radius: 8px !important;
+    background: #FFFFFF !important;
 }
-[data-testid="stDataFrame"] {
-    border: 1px solid #294563 !important;
-    border-radius: 10px !important;
+/* All main-area inputs and select boxes */
+[data-testid="stMain"] input, [data-testid="stMain"] textarea,
+[data-testid="stMain"] select,
+[data-testid="stMain"] [data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    color: #0B1F3A !important;
+    border: 1px solid #0B1F3A !important;
 }
-hr { border-color: #294563 !important; }
+[data-testid="stMain"] input::placeholder, [data-testid="stMain"] textarea::placeholder {
+    color: #0B1F3A !important;
+    opacity: 1 !important;
+}
+/* Dropdown menus: white background, navy text */
+[data-baseweb="popover"], [data-baseweb="menu"],
+[data-baseweb="select"] ul, [role="listbox"], [role="option"] {
+    background: #FFFFFF !important;
+    color: #0B1F3A !important;
+}
+[data-baseweb="option"] *, [role="option"] * { color: #0B1F3A !important; }
+/* Sidebar input fields */
+[data-testid="stSidebar"] input, [data-testid="stSidebar"] textarea,
+[data-testid="stSidebar"] [data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    color: #0B1F3A !important;
+    border: 1px solid #FFFFFF !important;
+}
+[data-testid="stSidebar"] [data-baseweb="popover"],
+[data-testid="stSidebar"] [role="listbox"],
+[data-testid="stSidebar"] [role="option"] {
+    background: #FFFFFF !important;
+    color: #0B1F3A !important;
+}
+[data-testid="stSidebar"] [role="option"] * { color: #0B1F3A !important; }
+/* Buttons: navy with white text */
+.stButton button, [data-testid="stDownloadButton"] button {
+    background: #0B1F3A !important;
+    color: #FFFFFF !important;
+    border: 1px solid #0B1F3A !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+.stButton button *, [data-testid="stDownloadButton"] button * { color: #FFFFFF !important; }
+hr { border-color: #0B1F3A !important; }
+/* Keep sidebar open and hide collapse chevron */
+[data-testid="stSidebarCollapseButton"], [data-testid="collapsedControl"] {
+    display: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -81,6 +146,12 @@ if not is_authenticated():
 
 current_role = get_user_role()
 current_username = get_username()
+
+# Set Dashboard as the landing page once per authenticated session.
+if not st.session_state.get("_post_login_landing_set", False):
+    st.session_state.current_page = "Dashboard"
+    st.session_state.nav_select = "Choose a module"
+    st.session_state._post_login_landing_set = True
 
 # =========================================================
 # 3. RISK COLORS & CALCULATIONS
@@ -315,7 +386,9 @@ available_pages = role_pages.get(current_role, role_pages["Mentor"])
 st.sidebar.markdown(f"### 👤 {current_username}")
 st.sidebar.caption(f"Role: {current_role}")
 if st.sidebar.button("🚪 Logout", use_container_width=True):
+    st.session_state._post_login_landing_set = False
     logout_user()
+    st.rerun()
 
 # Dashboard is the post-login landing page and is not a navigation option.
 if "current_page" not in st.session_state:

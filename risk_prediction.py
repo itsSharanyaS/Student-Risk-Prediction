@@ -12,99 +12,111 @@ from ml_engine import (
 )
 
 
+# =========================================================
+# 1. TRAIN AND CACHE MODELS
+# =========================================================
+
 @st.cache_resource
 def load_trained_models():
+
     return train_models()
 
 
+# =========================================================
+# 2. MAIN PAGE
+# =========================================================
+
 def render_risk_prediction_page(
     students,
-    apply_chart_theme=None,
-    risk_colors=None
+    apply_chart_theme,
+    risk_colors
 ):
 
-    st.title("🎯 Risk Prediction Center")
+    st.title("🤖 Risk Prediction Center")
 
     st.caption(
-        "AI-powered student risk analysis, model evaluation "
-        "and academic performance insights."
+        "Machine Learning powered student risk analysis, "
+        "model evaluation and feature importance."
     )
 
-    if risk_colors is None:
-        risk_colors = {
-            "Low": "#22C55E",
-            "Moderate": "#F59E0B",
-            "High": "#F97316",
-            "Critical": "#EF4444"
-        }
-
-    try:
-        trained_models, evaluation_results, training_data = (
-            load_trained_models()
-        )
-
-    except Exception as e:
-        st.error(f"Model training error: {e}")
-        return
+    # Load models
+    trained_models, evaluation_results, X = load_trained_models()
 
     # =====================================================
     # MODEL COMPARISON
     # =====================================================
 
     st.divider()
+
     st.subheader("📊 Model Comparison")
 
-    comparison_df = get_model_comparison(evaluation_results)
+    comparison = get_model_comparison(evaluation_results)
 
     st.dataframe(
-        comparison_df,
-        width="stretch",
+        comparison,
+        use_container_width=True,
         hide_index=True
     )
 
-    metric_options = ["Accuracy", "Precision", "Recall", "F1 Score"]
-
-    selected_metric = st.selectbox(
-        "Select metric to compare",
-        metric_options,
-        key="model_comparison_metric"
+    # Model performance chart
+    chart_data = comparison.melt(
+        id_vars="Model",
+        var_name="Metric",
+        value_name="Score"
     )
 
     fig_comparison = px.bar(
-        comparison_df,
+        chart_data,
         x="Model",
-        y=selected_metric,
-        color="Model",
-        text=selected_metric,
-        title=f"Model Comparison — {selected_metric}"
+        y="Score",
+        color="Metric",
+        barmode="group",
+        title="Machine Learning Model Performance",
+        text_auto=".1f"
     )
 
     fig_comparison.update_layout(
-        yaxis_title="Score (%)",
+        yaxis_title="Performance (%)",
         yaxis_range=[0, 100]
     )
 
-    fig_comparison.update_traces(
-        texttemplate="%{text:.2f}",
-        textposition="outside"
-    )
-
-    if apply_chart_theme:
-        fig_comparison = apply_chart_theme(fig_comparison)
+    fig_comparison = apply_chart_theme(fig_comparison)
 
     st.plotly_chart(
         fig_comparison,
-        width="stretch"
+        use_container_width=True
     )
+
+    # =====================================================
+    # BEST MODEL
+    # =====================================================
 
     best_model_name, best_model = get_best_model(
         trained_models,
         evaluation_results
     )
 
+    best_f1 = evaluation_results[best_model_name]["F1 Score"]
+
+    st.subheader("🏆 Best Performing Model")
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Best Model", best_model_name)
+
+    col2.metric(
+        "F1 Score",
+        f"{best_f1}%"
+    )
+
+    col3.metric(
+        "Models Compared",
+        len(trained_models)
+    )
+
     st.success(
-        f"🏆 Best performing model: {best_model_name} "
-        f"(F1 Score: {evaluation_results[best_model_name]['F1 Score']}%)"
+        f"{best_model_name} is currently the best-performing "
+        "model based on the F1 Score."
     )
 
     # =====================================================
@@ -112,12 +124,13 @@ def render_risk_prediction_page(
     # =====================================================
 
     st.divider()
-    st.subheader("🎯 Feature Importance")
 
-    importance_df = get_feature_importance(best_model)
+    st.subheader("🔍 Feature Importance")
+
+    feature_df = get_feature_importance(best_model)
 
     fig_importance = px.bar(
-        importance_df,
+        feature_df,
         x="Importance",
         y="Feature",
         orientation="h",
@@ -125,27 +138,24 @@ def render_risk_prediction_page(
         title=f"Factors Influencing Risk — {best_model_name}"
     )
 
-    fig_importance.update_traces(
-        texttemplate="%{text:.2f}%",
-        textposition="outside"
-    )
-
     fig_importance.update_layout(
         xaxis_title="Importance (%)",
-        yaxis_title="Feature"
+        yaxis_title="Student Feature",
+        xaxis_range=[0, 100],
+        yaxis=dict(categoryorder="total ascending")
     )
 
-    if apply_chart_theme:
-        fig_importance = apply_chart_theme(fig_importance)
+    fig_importance = apply_chart_theme(fig_importance)
 
     st.plotly_chart(
         fig_importance,
-        width="stretch"
+        use_container_width=True
     )
 
-    st.caption(
-        "Feature importance represents the relative contribution of "
-        "each feature to the trained model. It does not indicate causation."
+    st.dataframe(
+        feature_df,
+        use_container_width=True,
+        hide_index=True
     )
 
     # =====================================================
@@ -153,96 +163,98 @@ def render_risk_prediction_page(
     # =====================================================
 
     st.divider()
-    st.subheader("🔍 Individual Student Risk Prediction")
 
-    input_mode = st.radio(
-        "Choose prediction method",
+    st.subheader("🎓 Individual Student Risk Prediction")
+
+    prediction_mode = st.radio(
+        "Select Prediction Mode",
         ["Select Existing Student", "Manual Input"],
-        horizontal=True,
-        key="risk_prediction_mode"
+        horizontal=True
     )
 
-    attendance = 0
-    marks = 0
-    assignments = 0
+    # -----------------------------------------------------
+    # EXISTING STUDENT
+    # -----------------------------------------------------
 
-    if input_mode == "Select Existing Student":
+    if prediction_mode == "Select Existing Student":
 
         if students is None or students.empty:
+
             st.warning("No student records are available.")
+
             return
 
-        student_id_col = "Student ID"
-
-        if student_id_col not in students.columns:
-            st.warning("Student ID column not found.")
-            return
-
-        student_ids = students[student_id_col].astype(str).tolist()
+        student_ids = students["Student ID"].astype(str).tolist()
 
         selected_id = st.selectbox(
             "Select Student ID",
-            student_ids,
-            key="risk_selected_student"
+            student_ids
         )
 
-        student_row = students[
-            students[student_id_col].astype(str) == selected_id
+        student_data = students[
+            students["Student ID"].astype(str) == selected_id
         ].iloc[0]
 
-        required_columns = ["Attendance", "Marks", "Assignments"]
+        attendance = float(student_data["Attendance"])
 
-        missing = [
-            column for column in required_columns
-            if column not in students.columns
-        ]
+        marks = float(student_data["Marks"])
 
-        if missing:
-            st.error(f"Missing columns: {missing}")
-            return
+        assignments = float(student_data["Assignments"])
 
-        attendance = float(student_row["Attendance"])
-        marks = float(student_row["Marks"])
-        assignments = float(student_row["Assignments"])
+        student_name = str(
+            student_data.get("Student", selected_id)
+        )
 
-        st.write(f"**Student:** {student_row.get('Student', selected_id)}")
+        st.info(f"Selected Student: {student_name}")
 
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric("Attendance", f"{attendance:.1f}%")
-        col2.metric("Marks", f"{marks:.1f}%")
-        col3.metric("Assignments", f"{assignments:.1f}%")
+    # -----------------------------------------------------
+    # MANUAL INPUT
+    # -----------------------------------------------------
 
     else:
 
         col1, col2, col3 = st.columns(3)
 
-        attendance = col1.slider(
-            "Attendance (%)",
-            0, 100, 75,
-            key="manual_attendance"
-        )
+        with col1:
 
-        marks = col2.slider(
-            "Marks (%)",
-            0, 100, 65,
-            key="manual_marks"
-        )
+            attendance = st.number_input(
+                "Attendance (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=75.0,
+                step=1.0
+            )
 
-        assignments = col3.slider(
-            "Assignments (%)",
-            0, 100, 70,
-            key="manual_assignments"
-        )
+        with col2:
+
+            marks = st.number_input(
+                "Marks (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=65.0,
+                step=1.0
+            )
+
+        with col3:
+
+            assignments = st.number_input(
+                "Assignments (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=70.0,
+                step=1.0
+            )
+
+        student_name = "Manual Student"
 
     # =====================================================
     # PREDICTION BUTTON
     # =====================================================
 
     if st.button(
-        "🚀 Predict Student Risk",
+        "🔮 Predict Student Risk",
         type="primary",
-        width="stretch"
+        use_container_width=True
     ):
 
         prediction, probabilities, high_risk_probability = (
@@ -255,9 +267,10 @@ def render_risk_prediction_page(
         )
 
         st.divider()
+
         st.subheader("📋 Prediction Results")
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3, col4 = st.columns(4)
 
         col1.metric(
             "Predicted Risk",
@@ -265,28 +278,53 @@ def render_risk_prediction_page(
         )
 
         col2.metric(
-            "High / Critical Risk Probability",
-            f"{high_risk_probability:.2f}%"
+            "Attendance",
+            f"{attendance:.1f}%"
         )
 
-        st.markdown(
-            f"""
-            <div style="
-                background-color:{risk_colors.get(prediction, '#808080')};
-                padding:18px;
-                border-radius:12px;
-                color:white;
-                text-align:center;
-                font-size:22px;
-                font-weight:bold;
-            ">
-                Predicted Risk Level: {prediction}
-            </div>
-            """,
-            unsafe_allow_html=True
+        col3.metric(
+            "Marks",
+            f"{marks:.1f}%"
         )
 
-        # Probability chart
+        col4.metric(
+            "High/Critical Risk Probability",
+            f"{high_risk_probability:.1f}%"
+        )
+
+        # -------------------------------------------------
+        # RISK STATUS
+        # -------------------------------------------------
+
+        if prediction == "Critical":
+
+            st.error(
+                "🚨 Critical Risk: Immediate academic intervention is recommended."
+            )
+
+        elif prediction == "High":
+
+            st.warning(
+                "⚠️ High Risk: Student needs urgent monitoring and support."
+            )
+
+        elif prediction == "Moderate":
+
+            st.info(
+                "🟡 Moderate Risk: Regular monitoring and improvement are recommended."
+            )
+
+        else:
+
+            st.success(
+                "🟢 Low Risk: Student is currently performing well."
+            )
+
+        # -------------------------------------------------
+        # PROBABILITY CHART
+        # -------------------------------------------------
+
+        st.subheader("📈 Risk Probability Distribution")
 
         probability_df = pd.DataFrame({
             "Risk Level": list(probabilities.keys()),
@@ -298,101 +336,85 @@ def render_risk_prediction_page(
             x="Risk Level",
             y="Probability (%)",
             color="Risk Level",
-            color_discrete_map=risk_colors,
             text="Probability (%)",
-            title="Risk Probability Distribution"
+            title="Predicted Probability for Each Risk Category"
         )
 
         fig_probability.update_layout(
             yaxis_range=[0, 100]
         )
 
-        fig_probability.update_traces(
-            texttemplate="%{text:.2f}%",
-            textposition="outside"
-        )
-
-        if apply_chart_theme:
-            fig_probability = apply_chart_theme(fig_probability)
+        fig_probability = apply_chart_theme(fig_probability)
 
         st.plotly_chart(
             fig_probability,
-            width="stretch"
+            use_container_width=True
         )
 
-        # Recommendations
+        # -------------------------------------------------
+        # RECOMMENDATIONS
+        # -------------------------------------------------
 
         st.subheader("💡 Recommended Actions")
 
-        recommendations = {
-            "Low": [
-                "Maintain current academic performance.",
-                "Continue regular attendance.",
-                "Participate in academic activities."
+        if prediction == "Critical":
+
+            st.markdown("""
+            - Arrange an immediate faculty meeting with the student.
+            - Develop a personalized academic recovery plan.
+            - Monitor attendance and assignment submissions weekly.
+            - Provide additional tutoring and mentoring.
+            - Contact parents or guardians when appropriate.
+            """)
+
+        elif prediction == "High":
+
+            st.markdown("""
+            - Schedule faculty mentoring sessions.
+            - Identify subjects where marks are low.
+            - Improve attendance and assignment completion.
+            - Review student progress every week.
+            """)
+
+        elif prediction == "Moderate":
+
+            st.markdown("""
+            - Monitor academic performance regularly.
+            - Encourage consistent attendance.
+            - Provide subject-specific learning resources.
+            - Track assignment completion.
+            """)
+
+        else:
+
+            st.markdown("""
+            - Maintain consistent attendance.
+            - Continue regular assignment submissions.
+            - Encourage participation in academic activities.
+            - Monitor performance to maintain progress.
+            """)
+
+        # -------------------------------------------------
+        # INPUT SUMMARY
+        # -------------------------------------------------
+
+        st.subheader("📊 Student Input Summary")
+
+        input_summary = pd.DataFrame({
+            "Parameter": [
+                "Attendance",
+                "Marks",
+                "Assignments"
             ],
+            "Value (%)": [
+                attendance,
+                marks,
+                assignments
+            ]
+        })
 
-            "Moderate": [
-                "Monitor academic performance regularly.",
-                "Improve assignment submission consistency.",
-                "Encourage additional learning practice."
-            ],
-
-            "High": [
-                "Arrange faculty mentoring sessions.",
-                "Improve attendance and assignment completion.",
-                "Provide targeted academic support."
-            ],
-
-            "Critical": [
-                "Arrange immediate faculty intervention.",
-                "Create a personalized improvement plan.",
-                "Monitor attendance and progress weekly.",
-                "Provide additional academic assistance."
-            }
-        }
-
-        for action in recommendations.get(prediction, []):
-            st.write(f"• {action}")
-
-    # =====================================================
-    # MODEL METRICS
-    # =====================================================
-
-    st.divider()
-    st.subheader("📈 Model Performance Metrics")
-
-    metric_columns = st.columns(len(evaluation_results))
-
-    for column, (model_name, metrics) in zip(
-        metric_columns,
-        evaluation_results.items()
-    ):
-
-        with column:
-            st.markdown(f"**{model_name}**")
-
-            st.metric(
-                "Accuracy",
-                f"{metrics['Accuracy']:.2f}%"
-            )
-
-            st.metric(
-                "Precision",
-                f"{metrics['Precision']:.2f}%"
-            )
-
-            st.metric(
-                "Recall",
-                f"{metrics['Recall']:.2f}%"
-            )
-
-            st.metric(
-                "F1 Score",
-                f"{metrics['F1 Score']:.2f}%"
-            )
-
-    st.caption(
-        "Models are trained on synthetic data for demonstration. "
-        "Predictions should not be used as the sole basis for "
-        "academic decisions."
-    )
+        st.dataframe(
+            input_summary,
+            use_container_width=True,
+            hide_index=True
+        )
